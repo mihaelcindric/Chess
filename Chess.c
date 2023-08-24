@@ -24,6 +24,8 @@ typedef struct {
 void drawBoard(SDL_Renderer* renderer, char game[8][8]);
 void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Position newPos);
 int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, int* startRow, int* startCol);
+void showPossibleMoves(SDL_Renderer* renderer, Position possibleMoves[], int count);
+void showCurrentlyChosen(SDL_Renderer* renderer, Position chosenPosition);
 Position* getPawnMoves(char game[8][8], int startRow, int startCol, int* count);
 Position* getRookMoves(char game[8][8], int startRow, int startCol, int* count);
 Position* getKnightMoves(char game[8][8], int startRow, int startCol, int* count);
@@ -268,10 +270,12 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, 
                         break;
                     }
 
-                    int validMove = 0;
+                    showPossibleMoves(renderer, validMoves, moveCount);
+
+                    bool validMove = false;
                     for (int i = 0; i < moveCount; i++) {
                         if (validMoves[i].row == row && validMoves[i].col == col) {
-                            validMove = 1;
+                            validMove = true;
                             break;
                         }
                     }
@@ -301,6 +305,29 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, 
 
 
 
+
+void showPossibleMoves(SDL_Renderer* renderer, Position possibleMoves[], int count) {
+    for (int i = 0; i < count; i++) {
+        int row = possibleMoves[i].row;
+        int col = possibleMoves[i].col;
+
+        SDL_Rect rect = { col * 80, row * 80, 80, 80 };
+        SDL_SetRenderDrawColor(renderer, 204, 102, 102, 255); // Crvenkasta boja za moguće poteze
+        SDL_RenderFillRect(renderer, &rect);
+    }
+    SDL_RenderPresent(renderer);
+}
+
+
+void showCurrentlyChosen(SDL_Renderer* renderer, Position chosenPosition) {
+    int row = chosenPosition.row;
+    int col = chosenPosition.col;
+
+    SDL_Rect rect = { col * 80, row * 80, 80, 80 };
+    SDL_SetRenderDrawColor(renderer, 255, 51, 51, 255); // Intenzivnija crvenkasta boja za trenutno odabrano
+    SDL_RenderFillRect(renderer, &rect);
+    SDL_RenderPresent(renderer);
+}
 
 
 
