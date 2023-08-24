@@ -1,11 +1,11 @@
 ﻿#define _CRT_SECURE_NO_WARNINGS
 
-#include <stdio.h>
-#include <string.h>
-#include <stdbool.h>
-#include <ctype.h>
-#include <SDL.h>
-#include <SDL_image.h>
+#include "stdio.h"
+#include "string.h"
+#include "stdbool.h"
+#include "ctype.h"
+#include "SDL.h"
+#include "SDL_image.h"
 
 #define MAX_MOVES 27
 #define MAX_PAWN_MOVES 3
@@ -23,15 +23,18 @@ typedef struct {
 
 void drawBoard(SDL_Renderer* renderer, char game[8][8]);
 void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Position newPos);
-int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, int* startRow, int* startCol);
-void showPossibleMoves(SDL_Renderer* renderer, Position possibleMoves[], int count);
-void showCurrentlyChosen(SDL_Renderer* renderer, Position chosenPosition);
-Position* getPawnMoves(char game[8][8], int startRow, int startCol, int* count);
-Position* getRookMoves(char game[8][8], int startRow, int startCol, int* count);
-Position* getKnightMoves(char game[8][8], int startRow, int startCol, int* count);
-Position* getBishopMoves(char game[8][8], int startRow, int startCol, int* count);
-Position* getQueenMoves(char game[8][8], int startRow, int startCol, int* count);
-Position* getKingMoves(char game[8][8], int startRow, int startCol, int* count);
+int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, Position* startPos);
+Position* getPossibleMoves(char game[8][8], Position startPos, int* moveCount);
+void drawPiece(SDL_Renderer* renderer, char piece, int row, int col);
+void showPossibleMoves(SDL_Renderer* renderer, char game[8][8], Position possibleMoves[], int count);
+void showCurrentlyChosen(SDL_Renderer* renderer, char game[8][8], Position chosenPosition);
+void resetBoardColors(SDL_Renderer* renderer, char game[8][8], Position startPos);
+Position* getPawnMoves(char game[8][8], Position startPos, int* count);
+Position* getRookMoves(char game[8][8], Position startPos, int* count);
+Position* getKnightMoves(char game[8][8], Position startPos, int* count);
+Position* getBishopMoves(char game[8][8], Position startPos, int* count);
+Position* getQueenMoves(char game[8][8], Position startPos, int* count);
+Position* getKingMoves(char game[8][8], Position startPos, int* count);
 
 
 
@@ -217,96 +220,148 @@ void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Posit
 
 
 
-int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, int* startRow, int* startCol) {
+int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, Position* startPos) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_QUIT) {
             return 0; // Korisnik želi zatvoriti prozor
         }
         else if (event.type == SDL_MOUSEBUTTONDOWN) {
+            int moveCount = 0;
+            Position* validMoves = NULL;
+
             int x, y;
             SDL_GetMouseState(&x, &y);
-            int row = y / 80;
-            int col = x / 80;
+            Position clickedPos = { y / 80, x / 80 };
 
             if (!(*isMoving)) {
-                if (game[row][col] != ' ') { // Ako je na polju figura
+                if (game[clickedPos.row][clickedPos.col] != ' ') { // Ako je na polju figura
                     *isMoving = 1;
-                    *startRow = row;
-                    *startCol = col;
+                    *startPos = clickedPos;
+                    showCurrentlyChosen(renderer, game, clickedPos);
+
+                    validMoves = getPossibleMoves(game, *startPos, &moveCount);
+                    showPossibleMoves(renderer, game, validMoves, moveCount);
                 }
             }
             else {
                 // Provjera jesu li figure iste boje
-                char selectedPiece = game[*startRow][*startCol];
-                char targetPiece = game[row][col];
+                char selectedPiece = game[startPos->row][startPos->col];
+                char targetPiece = game[clickedPos.row][clickedPos.col];
                 if ((isupper(selectedPiece) && isupper(targetPiece)) ||
                     (islower(selectedPiece) && islower(targetPiece))) {
+                    resetBoardColors(renderer, game, *startPos);
+
                     // Mijenjanje odabrane figure
-                    *startRow = row;
-                    *startCol = col;
+                    *startPos = clickedPos;
+
+                    showCurrentlyChosen(renderer, game, clickedPos);
+
+                    validMoves = getPossibleMoves(game, *startPos, &moveCount);
+                    showPossibleMoves(renderer, game, validMoves, moveCount);
                 }
                 else {
-                    int moveCount;
-                    Position* validMoves = NULL;
-                    switch (tolower(selectedPiece)) {
-                    case 'p':
-                        validMoves = getPawnMoves(game, *startRow, *startCol, &moveCount);
-                        break;
-                    case 'r':
-                        validMoves = getRookMoves(game, *startRow, *startCol, &moveCount);
-                        break;
-                    case 'n':
-                        validMoves = getKnightMoves(game, *startRow, *startCol, &moveCount);
-                        break;
-                    case 'b':
-                        validMoves = getBishopMoves(game, *startRow, *startCol, &moveCount);
-                        break;
-                    case 'q':
-                        validMoves = getQueenMoves(game, *startRow, *startCol, &moveCount);
-                        break;
-                    case 'k':
-                        validMoves = getKingMoves(game, *startRow, *startCol, &moveCount);
-                        break;
-                    }
+                    validMoves = getPossibleMoves(game, *startPos, &moveCount);
 
-                    showPossibleMoves(renderer, validMoves, moveCount);
+                    showPossibleMoves(renderer, game, validMoves, moveCount);
 
                     bool validMove = false;
                     for (int i = 0; i < moveCount; i++) {
-                        if (validMoves[i].row == row && validMoves[i].col == col) {
+                        if (validMoves[i].row == clickedPos.row && validMoves[i].col == clickedPos.col) {
                             validMove = true;
                             break;
                         }
                     }
-                    free(validMoves); // Oslobađanje memorije
 
                     if (validMove) {
-                        char piece = game[*startRow][*startCol];
-                        game[*startRow][*startCol] = ' ';
-                        game[row][col] = piece;
+                        resetBoardColors(renderer, game, *startPos);
+
+                        char piece = game[startPos->row][startPos->col];
+                        game[startPos->row][startPos->col] = ' ';
+                        game[clickedPos.row][clickedPos.col] = piece;
                         *isMoving = 0; // Resetiranje statusa pomicanja
 
-                        Position oldPos = { *startRow, *startCol };
-                        Position newPos = { row, col };
-                        updateBoard(renderer, game, oldPos, newPos); // Poziv updateBoard funkcije
+                        updateBoard(renderer, game, *startPos, clickedPos); // Poziv updateBoard funkcije
                     }
                     else {
                         // Ako potez nije valjan, resetiraj status pomicanja
                         *isMoving = 0;
+                        resetBoardColors(renderer, game, *startPos);
                     }
                 }
             }
+            free(validMoves); // Oslobađanje memorije
         }
     }
     return 1; // Korisnik ne želi zatvoriti prozor
 }
 
 
+Position* getPossibleMoves(char game[8][8], Position startPos, int* moveCount) {
+    char selectedPiece = game[startPos.row][startPos.col];
+    Position* validMoves = NULL;
+
+    switch (tolower(selectedPiece)) {
+    case 'p':
+        validMoves = getPawnMoves(game, startPos, moveCount);
+        break;
+    case 'r':
+        validMoves = getRookMoves(game, startPos, moveCount);
+        break;
+    case 'n':
+        validMoves = getKnightMoves(game, startPos, moveCount);
+        break;
+    case 'b':
+        validMoves = getBishopMoves(game, startPos, moveCount);
+        break;
+    case 'q':
+        validMoves = getQueenMoves(game, startPos, moveCount);
+        break;
+    case 'k':
+        validMoves = getKingMoves(game, startPos, moveCount);
+        break;
+    }
+
+    return validMoves;
+}
 
 
 
-void showPossibleMoves(SDL_Renderer* renderer, Position possibleMoves[], int count) {
+
+
+void drawPiece(SDL_Renderer* renderer, char piece, int row, int col) {
+    char color[6];
+    if (islower(piece)) {
+        strcpy(color, "black");
+    }
+    else {
+        strcpy(color, "white");
+    }
+    piece = tolower(piece);
+
+    char pieceName[7];
+    switch (piece) {
+    case 'r': strcpy(pieceName, "rook"); break;
+    case 'n': strcpy(pieceName, "knight"); break;
+    case 'b': strcpy(pieceName, "bishop"); break;
+    case 'q': strcpy(pieceName, "queen"); break;
+    case 'k': strcpy(pieceName, "king"); break;
+    case 'p': strcpy(pieceName, "pawn"); break;
+    default: strcpy(pieceName, ""); break;
+    }
+
+    char path[50];
+    sprintf(path, "img/%s_%s.png", pieceName, color);
+    SDL_Surface* surface = IMG_Load(path);
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_FreeSurface(surface);
+
+    SDL_Rect destRect = { col * 80 + 20, row * 80 + 10, 40, 60 };
+    SDL_RenderCopy(renderer, texture, NULL, &destRect);
+    SDL_DestroyTexture(texture);
+}
+
+void showPossibleMoves(SDL_Renderer* renderer, char game[8][8], Position possibleMoves[], int count) {
     for (int i = 0; i < count; i++) {
         int row = possibleMoves[i].row;
         int col = possibleMoves[i].col;
@@ -314,19 +369,77 @@ void showPossibleMoves(SDL_Renderer* renderer, Position possibleMoves[], int cou
         SDL_Rect rect = { col * 80, row * 80, 80, 80 };
         SDL_SetRenderDrawColor(renderer, 204, 102, 102, 255); // Crvenkasta boja za moguće poteze
         SDL_RenderFillRect(renderer, &rect);
+
+        // Iscrtaj figuricu ponovo ako postoji na tom polju
+        char piece = game[row][col];
+        if (piece != ' ') {
+            drawPiece(renderer, piece, row, col);
+        }
     }
     SDL_RenderPresent(renderer);
 }
 
-
-void showCurrentlyChosen(SDL_Renderer* renderer, Position chosenPosition) {
+void showCurrentlyChosen(SDL_Renderer* renderer, char game[8][8], Position chosenPosition) {
     int row = chosenPosition.row;
     int col = chosenPosition.col;
 
     SDL_Rect rect = { col * 80, row * 80, 80, 80 };
     SDL_SetRenderDrawColor(renderer, 255, 51, 51, 255); // Intenzivnija crvenkasta boja za trenutno odabrano
     SDL_RenderFillRect(renderer, &rect);
+
+    // Iscrtaj figuricu ponovo
+    char piece = game[row][col];
+    drawPiece(renderer, piece, row, col);
     SDL_RenderPresent(renderer);
+}
+
+
+void resetBoardColors(SDL_Renderer* renderer, char game[8][8], Position startPos) {
+    int moveCount;
+    Position* positions = getPossibleMoves(game, startPos, &moveCount);
+
+    // Resetiranje izgleda polja na kojemu je figura
+    if ((startPos.row + startPos.col) % 2 == 0) {
+        SDL_SetRenderDrawColor(renderer, 139, 69, 19, 255); // Dark Brown
+    }
+    else {
+        SDL_SetRenderDrawColor(renderer, 233, 194, 166, 255); // Light Brown (Yellowish)
+    }
+
+    SDL_Rect rect = { startPos.col * 80, startPos.row * 80, 80, 80 };
+    SDL_RenderFillRect(renderer, &rect);
+
+    char piece = game[startPos.row][startPos.col];
+    if (piece != ' ') {
+        drawPiece(renderer, piece, startPos.row, startPos.col);
+    }
+
+    // Resetiranje ostalih polja
+    for (int i = 0; i < moveCount; i++) {
+        int row = positions[i].row;
+        int col = positions[i].col;
+
+        // Odabir boje ovisno o položaju polja (parna ili neparna kombinacija redaka i stupaca)
+        if ((row + col) % 2 == 0) {
+            SDL_SetRenderDrawColor(renderer, 139, 69, 19, 255); // Dark Brown
+        }
+        else {
+            SDL_SetRenderDrawColor(renderer, 233, 194, 166, 255); // Light Brown (Yellowish)
+        }
+
+        SDL_Rect rect = { col * 80, row * 80, 80, 80 };
+        SDL_RenderFillRect(renderer, &rect);
+
+        // Iscrtaj figuricu ponovo ako postoji na tom polju
+        char piece = game[row][col];
+        if (piece != ' ') {
+            drawPiece(renderer, piece, row, col);
+        }
+    }
+    SDL_RenderPresent(renderer);
+
+    // Oslobađanje memorije
+    free(positions);
 }
 
 
@@ -338,46 +451,45 @@ void showCurrentlyChosen(SDL_Renderer* renderer, Position chosenPosition) {
 
 
 
-
-Position* getPawnMoves(char game[8][8], int startRow, int startCol, int* count) {
+Position* getPawnMoves(char game[8][8], Position startPos, int* count) {
     Position* moves = (Position*)malloc(MAX_MOVES * sizeof(Position));
     *count = 0;
 
-    char pawn = game[startRow][startCol];
+    char pawn = game[startPos.row][startPos.col];
     int direction = islower(pawn) ? 1 : -1; // Za crne pješake ide dolje, za bijele ide gore
 
     // Provjera je li pijun na rubu ploče
-    if (startRow + direction >= 0 && startRow + direction < 8) {
+    if (startPos.row + direction >= 0 && startPos.row + direction < 8) {
         // Provjerite može li se pomaknuti naprijed
-        if (game[startRow + direction][startCol] == ' ') {
-            moves[*count].row = startRow + direction;
-            moves[*count].col = startCol;
+        if (game[startPos.row + direction][startPos.col] == ' ') {
+            moves[*count].row = startPos.row + direction;
+            moves[*count].col = startPos.col;
             (*count)++;
         }
-    
+
 
         // Provjerite može li se pojesti neka figura dijagonalno
-        if (startCol - 1 >= 0 && ((isupper(pawn) && islower(game[startRow + direction][startCol - 1])) ||
-            (islower(pawn) && isupper(game[startRow + direction][startCol - 1])))) {
-            moves[*count].row = startRow + direction;
-            moves[*count].col = startCol - 1;
+        if (startPos.col - 1 >= 0 && ((isupper(pawn) && islower(game[startPos.row + direction][startPos.col - 1])) ||
+            (islower(pawn) && isupper(game[startPos.row + direction][startPos.col - 1])))) {
+            moves[*count].row = startPos.row + direction;
+            moves[*count].col = startPos.col - 1;
             (*count)++;
         }
 
-        if (startCol + 1 < 8 && ((isupper(pawn) && islower(game[startRow + direction][startCol + 1])) ||
-            (islower(pawn) && isupper(game[startRow + direction][startCol + 1])))) {
-            moves[*count].row = startRow + direction;
-            moves[*count].col = startCol + 1;
+        if (startPos.col + 1 < 8 && ((isupper(pawn) && islower(game[startPos.row + direction][startPos.col + 1])) ||
+            (islower(pawn) && isupper(game[startPos.row + direction][startPos.col + 1])))) {
+            moves[*count].row = startPos.row + direction;
+            moves[*count].col = startPos.col + 1;
             (*count)++;
         }
-    }
 
-    // Posebna pravila za početni pomak od dva polja za pješake
-    if ((isupper(pawn) && startRow == 6) || (islower(pawn) && startRow == 1)) {
-        if (game[startRow + direction][startCol] == ' ' && game[startRow + 2 * direction][startCol] == ' ') {
-            moves[*count].row = startRow + 2 * direction;
-            moves[*count].col = startCol;
-            (*count)++;
+        // Posebna pravila za početni pomak od dva polja za pješake
+        if ((isupper(pawn) && startPos.row == 6) || (islower(pawn) && startPos.row == 1)) {
+            if (game[startPos.row + direction][startPos.col] == ' ' && game[startPos.row + 2 * direction][startPos.col] == ' ') {
+                moves[*count].row = startPos.row + 2 * direction;
+                moves[*count].col = startPos.col;
+                (*count)++;
+            }
         }
     }
 
@@ -385,22 +497,22 @@ Position* getPawnMoves(char game[8][8], int startRow, int startCol, int* count) 
 }
 
 
-Position* getRookMoves(char game[8][8], int startRow, int startCol, int* count) {
+Position* getRookMoves(char game[8][8], Position startPos, int* count) {
     Position* moves = (Position*)malloc(MAX_MOVES * sizeof(Position));
     *count = 0;
 
-    char rook = game[startRow][startCol];
+    char rook = game[startPos.row][startPos.col];
 
     // Provjera vodoravno prema desno
-    for (int j = startCol + 1; j < 8; j++) {
-        if (game[startRow][j] == ' ') {
-            moves[*count].row = startRow;
+    for (int j = startPos.col + 1; j < 8; j++) {
+        if (game[startPos.row][j] == ' ') {
+            moves[*count].row = startPos.row;
             moves[*count].col = j;
             (*count)++;
         }
         else {
-            if ((isupper(rook) && islower(game[startRow][j])) || (islower(rook) && isupper(game[startRow][j]))) {
-                moves[*count].row = startRow;
+            if ((isupper(rook) && islower(game[startPos.row][j])) || (islower(rook) && isupper(game[startPos.row][j]))) {
+                moves[*count].row = startPos.row;
                 moves[*count].col = j;
                 (*count)++;
             }
@@ -409,15 +521,15 @@ Position* getRookMoves(char game[8][8], int startRow, int startCol, int* count) 
     }
 
     // Provjera vodoravno prema lijevo
-    for (int j = startCol - 1; j >= 0; j--) {
-        if (game[startRow][j] == ' ') {
-            moves[*count].row = startRow;
+    for (int j = startPos.col - 1; j >= 0; j--) {
+        if (game[startPos.row][j] == ' ') {
+            moves[*count].row = startPos.row;
             moves[*count].col = j;
             (*count)++;
         }
         else {
-            if ((isupper(rook) && islower(game[startRow][j])) || (islower(rook) && isupper(game[startRow][j]))) {
-                moves[*count].row = startRow;
+            if ((isupper(rook) && islower(game[startPos.row][j])) || (islower(rook) && isupper(game[startPos.row][j]))) {
+                moves[*count].row = startPos.row;
                 moves[*count].col = j;
                 (*count)++;
             }
@@ -426,16 +538,16 @@ Position* getRookMoves(char game[8][8], int startRow, int startCol, int* count) 
     }
 
     // Provjera okomito prema gore
-    for (int i = startRow - 1; i >= 0; i--) {
-        if (game[i][startCol] == ' ') {
+    for (int i = startPos.row - 1; i >= 0; i--) {
+        if (game[i][startPos.col] == ' ') {
             moves[*count].row = i;
-            moves[*count].col = startCol;
+            moves[*count].col = startPos.col;
             (*count)++;
         }
         else {
-            if ((isupper(rook) && islower(game[i][startCol])) || (islower(rook) && isupper(game[i][startCol]))) {
+            if ((isupper(rook) && islower(game[i][startPos.col])) || (islower(rook) && isupper(game[i][startPos.col]))) {
                 moves[*count].row = i;
-                moves[*count].col = startCol;
+                moves[*count].col = startPos.col;
                 (*count)++;
             }
             break;
@@ -443,16 +555,16 @@ Position* getRookMoves(char game[8][8], int startRow, int startCol, int* count) 
     }
 
     // Provjera okomito prema dolje
-    for (int i = startRow + 1; i < 8; i++) {
-        if (game[i][startCol] == ' ') {
+    for (int i = startPos.row + 1; i < 8; i++) {
+        if (game[i][startPos.col] == ' ') {
             moves[*count].row = i;
-            moves[*count].col = startCol;
+            moves[*count].col = startPos.col;
             (*count)++;
         }
         else {
-            if ((isupper(rook) && islower(game[i][startCol])) || (islower(rook) && isupper(game[i][startCol]))) {
+            if ((isupper(rook) && islower(game[i][startPos.col])) || (islower(rook) && isupper(game[i][startPos.col]))) {
                 moves[*count].row = i;
-                moves[*count].col = startCol;
+                moves[*count].col = startPos.col;
                 (*count)++;
             }
             break;
@@ -463,19 +575,19 @@ Position* getRookMoves(char game[8][8], int startRow, int startCol, int* count) 
 }
 
 
-Position* getKnightMoves(char game[8][8], int startRow, int startCol, int* count) {
+Position* getKnightMoves(char game[8][8], Position startPos, int* count) {
     Position* moves = (Position*)malloc(MAX_MOVES * sizeof(Position));
     *count = 0;
 
-    char knight = game[startRow][startCol];
+    char knight = game[startPos.row][startPos.col];
 
     // Definiramo sve moguće poteze konja
     int rowMoves[8] = { -2, -1, 1, 2, 2, 1, -1, -2 };
     int colMoves[8] = { 1, 2, 2, 1, -1, -2, -2, -1 };
 
     for (int i = 0; i < 8; i++) {
-        int newRow = startRow + rowMoves[i];
-        int newCol = startCol + colMoves[i];
+        int newRow = startPos.row + rowMoves[i];
+        int newCol = startPos.col + colMoves[i];
 
         if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) { // Provjera je li unutar ploče
             if (game[newRow][newCol] == ' ' ||
@@ -492,11 +604,11 @@ Position* getKnightMoves(char game[8][8], int startRow, int startCol, int* count
 }
 
 
-Position* getBishopMoves(char game[8][8], int startRow, int startCol, int* count) {
+Position* getBishopMoves(char game[8][8], Position startPos, int* count) {
     Position* moves = (Position*)malloc(MAX_MOVES * sizeof(Position));
     *count = 0;
 
-    char bishop = game[startRow][startCol];
+    char bishop = game[startPos.row][startPos.col];
 
     // Definiramo smjerove kretanja lovca: gore-lijevo, gore-desno, dolje-lijevo, dolje-desno
     int rowMoves[4] = { -1, -1, 1, 1 };
@@ -506,8 +618,8 @@ Position* getBishopMoves(char game[8][8], int startRow, int startCol, int* count
         int step = 1;
 
         while (true) {
-            int newRow = startRow + step * rowMoves[dir];
-            int newCol = startCol + step * colMoves[dir];
+            int newRow = startPos.row + step * rowMoves[dir];
+            int newCol = startPos.col + step * colMoves[dir];
 
             if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
                 // Ako je unutar ploče
@@ -541,11 +653,11 @@ Position* getBishopMoves(char game[8][8], int startRow, int startCol, int* count
 }
 
 
-Position* getQueenMoves(char game[8][8], int startRow, int startCol, int* count) {
+Position* getQueenMoves(char game[8][8], Position startPos, int* count) {
     Position* moves = (Position*)malloc(MAX_MOVES * sizeof(Position));
     *count = 0;
 
-    char queen = game[startRow][startCol];
+    char queen = game[startPos.row][startPos.col];
 
     // Definiramo smjerove kretanja kraljice: horizontalno, vertikalno i dijagonalno
     int rowMoves[8] = { -1, -1, -1, 0, 1, 1, 1, 0 };
@@ -555,8 +667,8 @@ Position* getQueenMoves(char game[8][8], int startRow, int startCol, int* count)
         int step = 1;
 
         while (true) {
-            int newRow = startRow + step * rowMoves[dir];
-            int newCol = startCol + step * colMoves[dir];
+            int newRow = startPos.row + step * rowMoves[dir];
+            int newCol = startPos.col + step * colMoves[dir];
 
             if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
                 // Ako je unutar ploče
@@ -590,19 +702,19 @@ Position* getQueenMoves(char game[8][8], int startRow, int startCol, int* count)
 }
 
 
-Position* getKingMoves(char game[8][8], int startRow, int startCol, int* count) {
+Position* getKingMoves(char game[8][8], Position startPos, int* count) {
     Position* moves = (Position*)malloc(MAX_MOVES * sizeof(Position));
     *count = 0;
 
-    char king = game[startRow][startCol];
+    char king = game[startPos.row][startPos.col];
 
     // Definiramo smjerove kretanja kralja: horizontalno, vertikalno i dijagonalno
     int rowMoves[8] = { -1, -1, -1, 0, 1, 1, 1, 0 };
     int colMoves[8] = { -1, 0, 1, 1, 1, 0, -1, -1 };
 
     for (int dir = 0; dir < 8; dir++) {
-        int newRow = startRow + rowMoves[dir];
-        int newCol = startCol + colMoves[dir];
+        int newRow = startPos.row + rowMoves[dir];
+        int newCol = startPos.col + colMoves[dir];
 
         if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
             // Ako je unutar ploče
