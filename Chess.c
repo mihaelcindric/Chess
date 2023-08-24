@@ -22,7 +22,7 @@ typedef struct {
 } Position;
 
 void drawBoard(SDL_Renderer* renderer, char game[8][8]);
-void updateBoard(SDL_Renderer* renderer, char game[8][8], int oldX, int oldY, int newX, int newY);
+void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Position newPos);
 int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, int* startRow, int* startCol);
 Position* getPawnMoves(char game[8][8], int startRow, int startCol, int* count);
 Position* getRookMoves(char game[8][8], int startRow, int startCol, int* count);
@@ -159,12 +159,12 @@ void drawBoard(SDL_Renderer* renderer, char game[8][8]) {
 }
 
 
-void updateBoard(SDL_Renderer* renderer, char game[8][8], int oldX, int oldY, int newX, int newY) {
-    int positions[2][2] = { {oldX, oldY}, {newX, newY} };
+void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Position newPos) {
+    Position positions[2] = { oldPos, newPos };
 
     for (int pos = 0; pos < 2; pos++) {
-        int i = positions[pos][0];
-        int j = positions[pos][1];
+        int i = positions[pos].col;
+        int j = positions[pos].row;
 
         SDL_Rect rect = { i * 80, j * 80, 80, 80 };
         if ((i + j) % 2 == 0) {
@@ -279,7 +279,10 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, 
                         game[*startRow][*startCol] = ' ';
                         game[row][col] = piece;
                         *isMoving = 0; // Resetiranje statusa pomicanja
-                        updateBoard(renderer, game, *startCol, *startRow, col, row); // Poziv updateBoard funkcije
+
+                        Position oldPos = { *startRow, *startCol };
+                        Position newPos = { row, col };
+                        updateBoard(renderer, game, oldPos, newPos); // Poziv updateBoard funkcije
                     }
                     else {
                         // Ako potez nije valjan, resetiraj status pomicanja
