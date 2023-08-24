@@ -83,15 +83,6 @@ int main(int argc, char* argv[])
         if (!handlePieceMovement(renderer, game, &isMoving, &startRow, &startCol)) {
             break; // Ako korisnik želi zatvoriti prozor
         }
-        else {
-            for (int i = 0; i < 8; i++) {
-                for (int j = 0; j < 8; j++) {
-                    printf("%c ", game[i][j]);
-                }
-                printf("\n");
-            }
-            printf("\n");
-        }
         SDL_Delay(100);
     }
 
@@ -105,6 +96,9 @@ int main(int argc, char* argv[])
     return 0;
 
 }
+
+
+
 
 
 void drawBoard(SDL_Renderer* renderer, char game[8][8]) {
@@ -159,6 +153,9 @@ void drawBoard(SDL_Renderer* renderer, char game[8][8]) {
 }
 
 
+
+
+
 void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Position newPos) {
     Position positions[2] = { oldPos, newPos };
 
@@ -210,6 +207,12 @@ void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Posit
     }
     SDL_RenderPresent(renderer);
 }
+
+
+
+
+
+
 
 
 int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, int* startRow, int* startCol) {
@@ -294,6 +297,19 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, 
     }
     return 1; // Korisnik ne želi zatvoriti prozor
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 Position* getPawnMoves(char game[8][8], int startRow, int startCol, int* count) {
