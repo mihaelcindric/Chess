@@ -1,12 +1,20 @@
 ﻿#define _CRT_SECURE_NO_WARNINGS
 
-#include "stdio.h"
-#include "string.h"
-#include "ctype.h"
-#include "SDL.h"
-#include "SDL_image.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdbool.h>
+#include <ctype.h>
+#include <SDL.h>
+#include <SDL_image.h>
 
-#define MAX_MOVES 8
+#define MAX_MOVES 27
+#define MAX_PAWN_MOVES 3
+#define MAX_ROOK_MOVES 14
+#define MAX_KNIGHT_MOVES 8
+#define MAX_BISHOP_MOVES 13
+#define MAX_QUEEN_MOVES 27
+#define MAX_KING_MOVES 8
+
 
 typedef struct {
     int row;
@@ -74,6 +82,15 @@ int main(int argc, char* argv[])
     while (1) {
         if (!handlePieceMovement(renderer, game, &isMoving, &startRow, &startCol)) {
             break; // Ako korisnik želi zatvoriti prozor
+        }
+        else {
+            for (int i = 0; i < 8; i++) {
+                for (int j = 0; j < 8; j++) {
+                    printf("%c ", game[i][j]);
+                }
+                printf("\n");
+            }
+            printf("\n");
         }
         SDL_Delay(100);
     }

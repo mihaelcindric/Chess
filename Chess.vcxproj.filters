@@ -15,8 +15,11 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Chess.cpp">
+    <ClCompile Include="Chess.c">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Pawn.h">
+      <Filter>Header Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
