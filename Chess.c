@@ -452,7 +452,7 @@ void resetBoardColors(SDL_Renderer* renderer, char game[8][8], Position startPos
 
 
 Position* getPawnMoves(char game[8][8], Position startPos, int* count) {
-    Position* moves = (Position*)malloc(MAX_MOVES * sizeof(Position));
+    Position* moves = (Position*)malloc(MAX_PAWN_MOVES * sizeof(Position));
     *count = 0;
 
     char pawn = game[startPos.row][startPos.col];
@@ -498,7 +498,7 @@ Position* getPawnMoves(char game[8][8], Position startPos, int* count) {
 
 
 Position* getRookMoves(char game[8][8], Position startPos, int* count) {
-    Position* moves = (Position*)malloc(MAX_MOVES * sizeof(Position));
+    Position* moves = (Position*)malloc(MAX_ROOK_MOVES * sizeof(Position));
     *count = 0;
 
     char rook = game[startPos.row][startPos.col];
@@ -576,7 +576,7 @@ Position* getRookMoves(char game[8][8], Position startPos, int* count) {
 
 
 Position* getKnightMoves(char game[8][8], Position startPos, int* count) {
-    Position* moves = (Position*)malloc(MAX_MOVES * sizeof(Position));
+    Position* moves = (Position*)malloc(MAX_KNIGHT_MOVES * sizeof(Position));
     *count = 0;
 
     char knight = game[startPos.row][startPos.col];
@@ -605,7 +605,7 @@ Position* getKnightMoves(char game[8][8], Position startPos, int* count) {
 
 
 Position* getBishopMoves(char game[8][8], Position startPos, int* count) {
-    Position* moves = (Position*)malloc(MAX_MOVES * sizeof(Position));
+    Position* moves = (Position*)malloc(MAX_BISHOP_MOVES * sizeof(Position));
     *count = 0;
 
     char bishop = game[startPos.row][startPos.col];
@@ -654,7 +654,7 @@ Position* getBishopMoves(char game[8][8], Position startPos, int* count) {
 
 
 Position* getQueenMoves(char game[8][8], Position startPos, int* count) {
-    Position* moves = (Position*)malloc(MAX_MOVES * sizeof(Position));
+    Position* moves = (Position*)malloc(MAX_QUEEN_MOVES * sizeof(Position));
     *count = 0;
 
     char queen = game[startPos.row][startPos.col];
@@ -703,7 +703,7 @@ Position* getQueenMoves(char game[8][8], Position startPos, int* count) {
 
 
 Position* getKingMoves(char game[8][8], Position startPos, int* count) {
-    Position* moves = (Position*)malloc(MAX_MOVES * sizeof(Position));
+    Position* moves = (Position*)malloc(MAX_KING_MOVES * sizeof(Position));
     *count = 0;
 
     char king = game[startPos.row][startPos.col];
