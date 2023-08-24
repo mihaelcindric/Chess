@@ -300,26 +300,30 @@ Position* getPawnMoves(char game[8][8], int startRow, int startCol, int* count) 
     char pawn = game[startRow][startCol];
     int direction = islower(pawn) ? 1 : -1; // Za crne pješake ide dolje, za bijele ide gore
 
-    // Provjerite može li se pomaknuti naprijed
-    if (game[startRow + direction][startCol] == ' ') {
-        moves[*count].row = startRow + direction;
-        moves[*count].col = startCol;
-        (*count)++;
-    }
+    // Provjera je li pijun na rubu ploče
+    if (startRow + direction >= 0 && startRow + direction < 8) {
+        // Provjerite može li se pomaknuti naprijed
+        if (game[startRow + direction][startCol] == ' ') {
+            moves[*count].row = startRow + direction;
+            moves[*count].col = startCol;
+            (*count)++;
+        }
+    
 
-    // Provjerite može li se pojesti neka figura dijagonalno
-    if (startCol - 1 >= 0 && ((isupper(pawn) && islower(game[startRow + direction][startCol - 1])) ||
-        (islower(pawn) && isupper(game[startRow + direction][startCol - 1])))) {
-        moves[*count].row = startRow + direction;
-        moves[*count].col = startCol - 1;
-        (*count)++;
-    }
+        // Provjerite može li se pojesti neka figura dijagonalno
+        if (startCol - 1 >= 0 && ((isupper(pawn) && islower(game[startRow + direction][startCol - 1])) ||
+            (islower(pawn) && isupper(game[startRow + direction][startCol - 1])))) {
+            moves[*count].row = startRow + direction;
+            moves[*count].col = startCol - 1;
+            (*count)++;
+        }
 
-    if (startCol + 1 < 8 && ((isupper(pawn) && islower(game[startRow + direction][startCol + 1])) ||
-        (islower(pawn) && isupper(game[startRow + direction][startCol + 1])))) {
-        moves[*count].row = startRow + direction;
-        moves[*count].col = startCol + 1;
-        (*count)++;
+        if (startCol + 1 < 8 && ((isupper(pawn) && islower(game[startRow + direction][startCol + 1])) ||
+            (islower(pawn) && isupper(game[startRow + direction][startCol + 1])))) {
+            moves[*count].row = startRow + direction;
+            moves[*count].col = startCol + 1;
+            (*count)++;
+        }
     }
 
     // Posebna pravila za početni pomak od dva polja za pješake
