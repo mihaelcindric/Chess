@@ -7,6 +7,11 @@
 #include "SDL.h"
 #include "SDL_image.h"
 
+#define SCREEN_WIDTH 640
+#define SCREEN_HEIGHT 640
+#define FIELD_WIDHT 80
+#define FIELD_HEIGHT 80
+
 #define MAX_PAWN_MOVES 3
 #define MAX_ROOK_MOVES 14
 #define MAX_KNIGHT_MOVES 8
@@ -27,7 +32,7 @@ Position* getPossibleMoves(char game[8][8], Position startPos, int* moveCount, b
 void drawPiece(SDL_Renderer* renderer, char piece, int row, int col);
 void showPossibleMoves(SDL_Renderer* renderer, char game[8][8], Position possibleMoves[], int count);
 void showCurrentlyChosen(SDL_Renderer* renderer, char game[8][8], Position chosenPosition);
-void resetBoardColors(SDL_Renderer* renderer, char game[8][8], Position startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8]);
+void resetBoarFields(SDL_Renderer* renderer, char game[8][8], Position startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8]);
 Position* getPawnMoves(char game[8][8], Position startPos, int* count);
 Position* getRookMoves(char game[8][8], Position startPos, int* count);
 Position* getKnightMoves(char game[8][8], Position startPos, int* count);
@@ -35,6 +40,9 @@ Position* getBishopMoves(char game[8][8], Position startPos, int* count);
 Position* getQueenMoves(char game[8][8], Position startPos, int* count);
 Position* getKingMoves(char game[8][8], Position startPos, int* count, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8]);
 void updateAttackedFields(char game[8][8], int attackedFields[8][8], char piece, bool hasKingMoved[2], bool hasRookMoved[4]);
+void castling(SDL_Renderer* renderer, char game[8][8], char piece, Position clickedPos, bool hasKingMoved[2], bool hasRookMoved[4]);
+void promotion(SDL_Renderer* renderer, char game[8][8], int row, int col);
+void resetBoardCenter(SDL_Renderer* renderer, char game[8][8]);
 
 
 int main(int argc, char* argv[])
@@ -253,7 +261,7 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, 
                 char targetPiece = game[clickedPos.row][clickedPos.col];
                 if ((isupper(selectedPiece) && isupper(targetPiece)) ||
                     (islower(selectedPiece) && islower(targetPiece))) {
-                    resetBoardColors(renderer, game, *startPos, hasKingMoved, hasRookMoved, attackedFields);
+                    resetBoarFields(renderer, game, *startPos, hasKingMoved, hasRookMoved, attackedFields);
 
                     // Mijenjanje odabrane figure
                     *startPos = clickedPos;
@@ -277,67 +285,33 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, 
                     }
 
                     if (validMove) {
-                        resetBoardColors(renderer, game, *startPos, hasKingMoved, hasRookMoved, attackedFields);
+                        resetBoarFields(renderer, game, *startPos, hasKingMoved, hasRookMoved, attackedFields);
 
                         char piece = game[startPos->row][startPos->col];
                         game[startPos->row][startPos->col] = ' ';
                         game[clickedPos.row][clickedPos.col] = piece;
                         *isMoving = 0; // Resetiranje statusa pomicanja
 
+                        // promotion
+                        if (piece == 'p' && clickedPos.row == 7 || piece == 'P' && clickedPos.row == 0) {
+                            promotion(renderer, game, clickedPos.row, clickedPos.col);
+                            resetBoardCenter(renderer, game);
+                        }
 
                         // castling
-                        if (piece == 'k') { // black
-                            if (hasKingMoved[0] == false && clickedPos.row == 0) {
-                                if (clickedPos.col == 2 && hasRookMoved[0] == false) {
-                                    game[0][0] = ' ';
-                                    game[0][3] = 'r';
-                                    hasRookMoved[0] = true;
-                                    Position rookPosOld = { 0, 0 };
-                                    Position rookPosNew = { 0, 3 };
-                                    updateBoard(renderer, game, rookPosOld, rookPosNew);
-                                }
-                                else if (clickedPos.col == 6 && hasRookMoved[1] == false) {
-                                    game[0][7] = ' ';
-                                    game[0][5] = 'r';
-                                    hasRookMoved[1] = true;
-                                    Position rookPosOld = { 0, 7 };
-                                    Position rookPosNew = { 0, 5 };
-                                    updateBoard(renderer, game, rookPosOld, rookPosNew);
-                                }
-                            }
-                            hasKingMoved[0] = true;
-                        }
-                        else if (piece == 'K') {    // white
-                            if (hasKingMoved[1] == false && clickedPos.row == 7) {
-                                if (clickedPos.col == 2 && hasRookMoved[2] == false) {
-                                    game[7][0] = ' ';
-                                    game[7][3] = 'R';
-                                    hasRookMoved[2] = true;
-                                    Position rookPosOld = { 7, 0 };
-                                    Position rookPosNew = { 7, 3 };
-                                    updateBoard(renderer, game, rookPosOld, rookPosNew);
-                                }
-                                else if (clickedPos.col == 6 && hasRookMoved[3] == false) {
-                                    game[7][7] = ' ';
-                                    game[7][5] = 'R';
-                                    hasRookMoved[3] = true;
-                                    Position rookPosOld = { 7, 7 };
-                                    Position rookPosNew = { 7, 5 };
-                                    updateBoard(renderer, game, rookPosOld, rookPosNew);
-                                }
-                            }
-                            hasKingMoved[1] = true;
-                        }
+                        castling(renderer, game, piece, clickedPos, hasKingMoved, hasRookMoved);
 
                         // el passante TODO
 
+
                         updateBoard(renderer, game, *startPos, clickedPos); // Poziv updateBoard funkcije
                         updateAttackedFields(game, attackedFields, piece, hasKingMoved, hasRookMoved);  // Updating currently attacked fields
+
                     }
                     else {
                         // Ako potez nije valjan, resetiraj status pomicanja
                         *isMoving = 0;
-                        resetBoardColors(renderer, game, *startPos, hasKingMoved, hasRookMoved, attackedFields);
+                        resetBoarFields(renderer, game, *startPos, hasKingMoved, hasRookMoved, attackedFields);
                     }
                 }
             }
@@ -412,6 +386,7 @@ void drawPiece(SDL_Renderer* renderer, char piece, int row, int col) {
     SDL_DestroyTexture(texture);
 }
 
+
 void showPossibleMoves(SDL_Renderer* renderer, char game[8][8], Position possibleMoves[], int count) {
     for (int i = 0; i < count; i++) {
         int row = possibleMoves[i].row;
@@ -445,7 +420,7 @@ void showCurrentlyChosen(SDL_Renderer* renderer, char game[8][8], Position chose
 }
 
 
-void resetBoardColors(SDL_Renderer* renderer, char game[8][8], Position startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8]) {
+void resetBoarFields(SDL_Renderer* renderer, char game[8][8], Position startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8]) {
     int moveCount;
     Position* positions = getPossibleMoves(game, startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields);
 
@@ -897,5 +872,158 @@ void updateAttackedFields(char game[8][8], int attackedFields[8][8], char piece,
                 free(moves); // Oslobađanje memorije
             }
         }
+    }
+}
+
+
+void castling(SDL_Renderer* renderer, char game[8][8], char piece, Position clickedPos, bool hasKingMoved[2], bool hasRookMoved[4]) {
+    // castling
+    if (piece == 'k') { // black
+        if (hasKingMoved[0] == false && clickedPos.row == 0) {
+            if (clickedPos.col == 2 && hasRookMoved[0] == false) {
+                game[0][0] = ' ';
+                game[0][3] = 'r';
+                hasRookMoved[0] = true;
+                Position rookPosOld = { 0, 0 };
+                Position rookPosNew = { 0, 3 };
+                updateBoard(renderer, game, rookPosOld, rookPosNew);
+            }
+            else if (clickedPos.col == 6 && hasRookMoved[1] == false) {
+                game[0][7] = ' ';
+                game[0][5] = 'r';
+                hasRookMoved[1] = true;
+                Position rookPosOld = { 0, 7 };
+                Position rookPosNew = { 0, 5 };
+                updateBoard(renderer, game, rookPosOld, rookPosNew);
+            }
+        }
+        hasKingMoved[0] = true;
+    }
+    else if (piece == 'K') {    // white
+        if (hasKingMoved[1] == false && clickedPos.row == 7) {
+            if (clickedPos.col == 2 && hasRookMoved[2] == false) {
+                game[7][0] = ' ';
+                game[7][3] = 'R';
+                hasRookMoved[2] = true;
+                Position rookPosOld = { 7, 0 };
+                Position rookPosNew = { 7, 3 };
+                updateBoard(renderer, game, rookPosOld, rookPosNew);
+            }
+            else if (clickedPos.col == 6 && hasRookMoved[3] == false) {
+                game[7][7] = ' ';
+                game[7][5] = 'R';
+                hasRookMoved[3] = true;
+                Position rookPosOld = { 7, 7 };
+                Position rookPosNew = { 7, 5 };
+                updateBoard(renderer, game, rookPosOld, rookPosNew);
+            }
+        }
+        hasKingMoved[1] = true;
+    }
+}
+
+
+
+void promotion(SDL_Renderer* renderer, char game[8][8], int row, int col) {
+    // Koordinate i veličina gumba za promociju
+    int buttonWidth = 40;
+    int buttonHeight = 60;
+    int startX = (SCREEN_WIDTH - FIELD_WIDHT * 4) / 2;
+    int startY = (SCREEN_HEIGHT - FIELD_HEIGHT) / 2;
+
+    // Okvir oko prozora
+    SDL_Rect borderRect = { startX - 10, startY - 10, FIELD_WIDHT * 4 + 20, FIELD_HEIGHT + 20};
+    if (game[row][col] == 'p')
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // White border
+    else
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // Black border
+    
+    SDL_RenderFillRect(renderer, &borderRect);
+
+    // Pozadina za gumb za promociju
+    SDL_Rect backgroundRect = { startX, startY, FIELD_WIDHT * 4, FIELD_HEIGHT };
+    if (game[row][col] == 'p')
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // Black background
+    else
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // White background
+    SDL_RenderFillRect(renderer, &backgroundRect);
+
+    // Petlja za odabir promocije
+    bool choosing = true;
+    while (choosing) {
+        // Crtanje gumba za promociju
+        for (int i = 0; i < 4; i++) {
+            SDL_Rect rect = { startX + i * FIELD_HEIGHT + 20, startY + 10, buttonWidth, buttonHeight };
+            char* color = "";
+            if (game[row][col] == 'p')
+                color = "black";
+            else
+                color = "white";
+
+            char* piece = "";
+            switch (i) {
+                case 0: piece = "queen"; break;
+                case 1: piece = "rook"; break;
+                case 2: piece = "bishop"; break;
+                case 3: piece = "knight"; break;
+            }
+
+            char path[50];
+            sprintf(path, "img/%s_%s.png", piece, color);
+            SDL_Surface* surface = IMG_Load(path);
+            SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+            SDL_FreeSurface(surface);
+
+            SDL_RenderCopy(renderer, texture, NULL, &rect);
+            SDL_DestroyTexture(texture);
+
+        }
+
+        SDL_RenderPresent(renderer);
+
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                // Obrada zatvaranja prozora, ako je potrebno
+                // Ovisno o strukturi vašeg programa, ovdje možete izaći iz igre ili nešto slično.
+            }
+            else if (event.type == SDL_MOUSEBUTTONDOWN) {
+                int x, y;
+                SDL_GetMouseState(&x, &y);
+
+                // Provjera da li je kliknuto na jedno od gumba za promociju
+                for (int i = 0; i < 4; i++) {
+                    if (x >= startX + i * FIELD_WIDHT && x < startX + (i + 1) * FIELD_WIDHT &&
+                        y >= startY && y < startY + FIELD_HEIGHT) {
+                        // Promocija pijuna
+                        char promotionPiece;
+                        switch (i) {
+                            case 0: promotionPiece = (game[row][col] == 'P') ? 'Q' : 'q'; break; // Dama
+                            case 1: promotionPiece = (game[row][col] == 'P') ? 'R' : 'r'; break; // Top
+                            case 2: promotionPiece = (game[row][col] == 'P') ? 'B' : 'b'; break; // Lovac
+                            case 3: promotionPiece = (game[row][col] == 'P') ? 'N' : 'n'; break; // Konj
+                        }
+                        game[row][col] = promotionPiece;
+                        choosing = false;
+                        break; // Izlaz iz petlje za promociju
+                    }
+                }
+            }
+        }
+
+    }
+
+    // Osvježite prikaz ploče ovdje, ako je potrebno
+}
+
+
+
+void resetBoardCenter(SDL_Renderer* renderer, char game[8][8]) {
+    int rows[] = { 3, 4 };
+    int cols[] = { 1, 2, 3, 4, 5, 6 };
+    for (int i = 0; i < 6; i++) {
+        Position first = { rows[0], cols[i] };
+        Position second = { rows[1], cols[i] };
+        updateBoard(renderer, game, first, second);
     }
 }
