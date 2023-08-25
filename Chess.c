@@ -27,19 +27,19 @@ typedef struct {
 
 void drawBoard(SDL_Renderer* renderer, char game[8][8]);
 void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Position newPos);
-int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8]);
-Position* getPossibleMoves(char game[8][8], Position startPos, int* moveCount, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8]);
+int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove);
+Position* getPossibleMoves(char game[8][8], Position startPos, int* moveCount, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove);
 void drawPiece(SDL_Renderer* renderer, char piece, int row, int col);
 void showPossibleMoves(SDL_Renderer* renderer, char game[8][8], Position possibleMoves[], int count);
 void showCurrentlyChosen(SDL_Renderer* renderer, char game[8][8], Position chosenPosition);
-void resetBoarFields(SDL_Renderer* renderer, char game[8][8], Position startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8]);
-Position* getPawnMoves(char game[8][8], Position startPos, int* count);
+void resetBoardFields(SDL_Renderer* renderer, char game[8][8], Position startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove);
+Position* getPawnMoves(char game[8][8], Position startPos, int* count, Position* lastMove);
 Position* getRookMoves(char game[8][8], Position startPos, int* count);
 Position* getKnightMoves(char game[8][8], Position startPos, int* count);
 Position* getBishopMoves(char game[8][8], Position startPos, int* count);
 Position* getQueenMoves(char game[8][8], Position startPos, int* count);
 Position* getKingMoves(char game[8][8], Position startPos, int* count, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8]);
-void updateAttackedFields(char game[8][8], int attackedFields[8][8], char piece, bool hasKingMoved[2], bool hasRookMoved[4]);
+void updateAttackedFields(char game[8][8], int attackedFields[8][8], char piece, bool hasKingMoved[2], bool hasRookMoved[4], Position* lastMove);
 void castling(SDL_Renderer* renderer, char game[8][8], char piece, Position clickedPos, bool hasKingMoved[2], bool hasRookMoved[4]);
 void promotion(SDL_Renderer* renderer, char game[8][8], int row, int col);
 void resetBoardCenter(SDL_Renderer* renderer, char game[8][8]);
@@ -65,6 +65,8 @@ int main(int argc, char* argv[])
 
     bool hasKingMoved[2] = { false, false };    // black, white
     bool hasRookMoved[4] = { false, false, false, false };  // black-left, black-right, white-left, white-right
+
+    Position lastMove[2] = { {0, 0}, {0, 0} };
 
     int attackedFields[8][8] = { 0 };
 
@@ -96,7 +98,7 @@ int main(int argc, char* argv[])
 
 
     while (1) {
-        if (!handlePieceMovement(renderer, game, &isMoving, &startPos, hasKingMoved, hasRookMoved, attackedFields)) {
+        if (!handlePieceMovement(renderer, game, &isMoving, &startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove)) {
             break; // Ako korisnik želi zatvoriti prozor
         }
         SDL_Delay(100);
@@ -231,7 +233,7 @@ void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Posit
 
 
 
-int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8]) {
+int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_QUIT) {
@@ -251,7 +253,7 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, 
                     *startPos = clickedPos;
                     showCurrentlyChosen(renderer, game, clickedPos);
 
-                    validMoves = getPossibleMoves(game, *startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields);
+                    validMoves = getPossibleMoves(game, *startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove);
                     showPossibleMoves(renderer, game, validMoves, moveCount);
                 }
             }
@@ -261,18 +263,18 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, 
                 char targetPiece = game[clickedPos.row][clickedPos.col];
                 if ((isupper(selectedPiece) && isupper(targetPiece)) ||
                     (islower(selectedPiece) && islower(targetPiece))) {
-                    resetBoarFields(renderer, game, *startPos, hasKingMoved, hasRookMoved, attackedFields);
+                    resetBoardFields(renderer, game, *startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove);
 
                     // Mijenjanje odabrane figure
                     *startPos = clickedPos;
 
                     showCurrentlyChosen(renderer, game, clickedPos);
 
-                    validMoves = getPossibleMoves(game, *startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields);
+                    validMoves = getPossibleMoves(game, *startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove);
                     showPossibleMoves(renderer, game, validMoves, moveCount);
                 }
                 else {
-                    validMoves = getPossibleMoves(game, *startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields);
+                    validMoves = getPossibleMoves(game, *startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove);
 
                     showPossibleMoves(renderer, game, validMoves, moveCount);
 
@@ -285,7 +287,7 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, 
                     }
 
                     if (validMove) {
-                        resetBoarFields(renderer, game, *startPos, hasKingMoved, hasRookMoved, attackedFields);
+                        resetBoardFields(renderer, game, *startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove);
 
                         char piece = game[startPos->row][startPos->col];
                         game[startPos->row][startPos->col] = ' ';
@@ -297,21 +299,35 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, 
                             promotion(renderer, game, clickedPos.row, clickedPos.col);
                             resetBoardCenter(renderer, game);
                         }
-
+                        
                         // castling
                         castling(renderer, game, piece, clickedPos, hasKingMoved, hasRookMoved);
 
-                        // el passante TODO
+                        // el passante
+                        if (piece == 'p' || piece == 'P' && abs(startPos->col - clickedPos.col) == 1) {
+                            if (lastMove[1].row == startPos->row && (lastMove[1].col == startPos->col - 1 || lastMove[1].col == startPos->col + 1) // provjera je li zadnji potez zavrsio do trenutnog pocetnog
+                                && abs(lastMove[0].row - lastMove[1].row) == 2) {   // provjera je li zadnji potez bio preko dva polja
+                                if (piece == 'p' && game[lastMove[1].row][lastMove[1].col] == 'P' ||
+                                    piece == 'P' && game[lastMove[1].row][lastMove[1].col] == 'p') { // provjera jesu li obje figure pijuni razlicitih boja
 
+                                    game[lastMove[1].row][lastMove[1].col] = ' ';
+                                    updateBoard(renderer, game, *startPos, lastMove[1]);    // micanje figure odnesene el passant potezom
+                                }
+                            }
+                        }
+
+                        // update last/previous move
+                        lastMove[0] = *startPos;
+                        lastMove[1] = clickedPos;
 
                         updateBoard(renderer, game, *startPos, clickedPos); // Poziv updateBoard funkcije
-                        updateAttackedFields(game, attackedFields, piece, hasKingMoved, hasRookMoved);  // Updating currently attacked fields
+                        updateAttackedFields(game, attackedFields, piece, hasKingMoved, hasRookMoved, lastMove);  // Updating currently attacked fields
 
                     }
                     else {
                         // Ako potez nije valjan, resetiraj status pomicanja
                         *isMoving = 0;
-                        resetBoarFields(renderer, game, *startPos, hasKingMoved, hasRookMoved, attackedFields);
+                        resetBoardFields(renderer, game, *startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove);
                     }
                 }
             }
@@ -322,13 +338,13 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, 
 }
 
 
-Position* getPossibleMoves(char game[8][8], Position startPos, int* moveCount, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8]) {
+Position* getPossibleMoves(char game[8][8], Position startPos, int* moveCount, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove) {
     char selectedPiece = game[startPos.row][startPos.col];
     Position* validMoves = NULL;
 
     switch (tolower(selectedPiece)) {
     case 'p':
-        validMoves = getPawnMoves(game, startPos, moveCount);
+        validMoves = getPawnMoves(game, startPos, moveCount, lastMove);
         break;
     case 'r':
         validMoves = getRookMoves(game, startPos, moveCount);
@@ -420,9 +436,9 @@ void showCurrentlyChosen(SDL_Renderer* renderer, char game[8][8], Position chose
 }
 
 
-void resetBoarFields(SDL_Renderer* renderer, char game[8][8], Position startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8]) {
+void resetBoardFields(SDL_Renderer* renderer, char game[8][8], Position startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove) {
     int moveCount;
-    Position* positions = getPossibleMoves(game, startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields);
+    Position* positions = getPossibleMoves(game, startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove);
 
     // Resetiranje izgleda polja na kojemu je figura
     if ((startPos.row + startPos.col) % 2 == 0) {
@@ -477,7 +493,7 @@ void resetBoarFields(SDL_Renderer* renderer, char game[8][8], Position startPos,
 
 
 
-Position* getPawnMoves(char game[8][8], Position startPos, int* count) {
+Position* getPawnMoves(char game[8][8], Position startPos, int* count, Position* lastMove) {
     Position* moves = (Position*)malloc(MAX_PAWN_MOVES * sizeof(Position));
     *count = 0;
 
@@ -517,17 +533,22 @@ Position* getPawnMoves(char game[8][8], Position startPos, int* count) {
                 (*count)++;
             }
         }
-/*
+
         // Provjera za "en passant"
-        if (lastPawnMove.row != -1 && abs(lastPawnMove.row - startPos.row) == 1 && lastPawnMove.col == startPos.col) {
-            int direction = islower(game[startPos.row][startPos.col]) ? 1 : -1;
-            if (game[startPos.row + direction][startPos.col] == ' ') {
-                moves[*count].row = startPos.row + direction;
-                moves[*count].col = startPos.col; // Dodaj oznaku za "en passant" ili neku drugu informaciju ako je potrebno
-                (*count)++;
+        if (lastMove[1].row == startPos.row && (lastMove[1].col == startPos.col - 1 || lastMove[1].col == startPos.col + 1) // provjera je li zadnji potez zavrsio do trenutnog pocetnog
+            && abs(lastMove[0].row - lastMove[1].row) == 2) {   // provjera je li zadnji potez bio preko dva polja
+            if (game[startPos.row][startPos.col] == 'p' && game[lastMove[1].row][lastMove[1].col] == 'P' ||
+                game[startPos.row][startPos.col] == 'P' && game[lastMove[1].row][lastMove[1].col] == 'p') { // provjera jesu li obje figure pijuni razlicitih boja
+                
+                int direction = islower(game[startPos.row][startPos.col]) ? 1 : -1;
+                if (game[startPos.row + direction][startPos.col] == ' ') {
+                    moves[*count].row = startPos.row + direction;
+                    moves[*count].col = lastMove[1].col;
+                    (*count)++;
+                }
             }
         }
-*/
+
     }
 
     return moves;
@@ -824,7 +845,7 @@ Position* getKingMoves(char game[8][8], Position startPos, int* count, bool hasK
 
 
 
-void updateAttackedFields(char game[8][8], int attackedFields[8][8], char piece, bool hasKingMoved[2], bool hasRookMoved[4]) {
+void updateAttackedFields(char game[8][8], int attackedFields[8][8], char piece, bool hasKingMoved[2], bool hasRookMoved[4], Position* lastMove) {
     // Resetiranje polja
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
@@ -842,7 +863,7 @@ void updateAttackedFields(char game[8][8], int attackedFields[8][8], char piece,
 
                 switch (toupper(game[row][col])) {
                 case 'P':
-                    moves = getPawnMoves(game, startPos, &count);
+                    moves = getPawnMoves(game, startPos, &count, lastMove);
                     break;
                 case 'R':
                     moves = getRookMoves(game, startPos, &count);
