@@ -34,7 +34,7 @@ Position* getKnightMoves(char game[8][8], Position startPos, int* count);
 Position* getBishopMoves(char game[8][8], Position startPos, int* count);
 Position* getQueenMoves(char game[8][8], Position startPos, int* count);
 Position* getKingMoves(char game[8][8], Position startPos, int* count, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8]);
-void updateAttackedFields(char game[8][8], int attackedFields[8][8], char piece);
+void updateAttackedFields(char game[8][8], int attackedFields[8][8], char piece, bool hasKingMoved[2], bool hasRookMoved[4]);
 
 
 int main(int argc, char* argv[])
@@ -284,8 +284,55 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, 
                         game[clickedPos.row][clickedPos.col] = piece;
                         *isMoving = 0; // Resetiranje statusa pomicanja
 
+
+                        // castling
+                        if (piece == 'k') { // black
+                            if (hasKingMoved[0] == false && clickedPos.row == 0) {
+                                if (clickedPos.col == 2 && hasRookMoved[0] == false) {
+                                    game[0][0] = ' ';
+                                    game[0][3] = 'r';
+                                    hasRookMoved[0] = true;
+                                    Position rookPosOld = { 0, 0 };
+                                    Position rookPosNew = { 0, 3 };
+                                    updateBoard(renderer, game, rookPosOld, rookPosNew);
+                                }
+                                else if (clickedPos.col == 6 && hasRookMoved[1] == false) {
+                                    game[0][7] = ' ';
+                                    game[0][5] = 'r';
+                                    hasRookMoved[1] = true;
+                                    Position rookPosOld = { 0, 7 };
+                                    Position rookPosNew = { 0, 5 };
+                                    updateBoard(renderer, game, rookPosOld, rookPosNew);
+                                }
+                            }
+                            hasKingMoved[0] = true;
+                        }
+                        else if (piece == 'K') {    // white
+                            if (hasKingMoved[1] == false && clickedPos.row == 7) {
+                                if (clickedPos.col == 2 && hasRookMoved[2] == false) {
+                                    game[7][0] = ' ';
+                                    game[7][3] = 'R';
+                                    hasRookMoved[2] = true;
+                                    Position rookPosOld = { 7, 0 };
+                                    Position rookPosNew = { 7, 3 };
+                                    updateBoard(renderer, game, rookPosOld, rookPosNew);
+                                }
+                                else if (clickedPos.col == 6 && hasRookMoved[3] == false) {
+                                    game[7][7] = ' ';
+                                    game[7][5] = 'R';
+                                    hasRookMoved[3] = true;
+                                    Position rookPosOld = { 7, 7 };
+                                    Position rookPosNew = { 7, 5 };
+                                    updateBoard(renderer, game, rookPosOld, rookPosNew);
+                                }
+                            }
+                            hasKingMoved[1] = true;
+                        }
+
+                        // el passante TODO
+
                         updateBoard(renderer, game, *startPos, clickedPos); // Poziv updateBoard funkcije
-                        updateAttackedFields(game, attackedFields, piece);  // Updating currently attacked fields
+                        updateAttackedFields(game, attackedFields, piece, hasKingMoved, hasRookMoved);  // Updating currently attacked fields
                     }
                     else {
                         // Ako potez nije valjan, resetiraj status pomicanja
@@ -750,19 +797,40 @@ Position* getKingMoves(char game[8][8], Position startPos, int* count, bool hasK
         }
     }
 
-    // Rokada
-    if (!hasKingMoved) {
+    // Rokada crni
+    if (king == 'k' && !hasKingMoved[0]) {
         int kingRow = startPos.row;
 
-        // Kraljeva rokada (top na kraljevoj strani)
-        if (!hasRookMoved[0] && game[kingRow][1] == ' ' && game[kingRow][2] == ' ' && game[kingRow][3] == ' ' /* i provjera napada */) {
+        // Damska rokada (top na daminoj strani)
+        if (!hasRookMoved[1] && game[kingRow][1] == ' ' && game[kingRow][2] == ' ' && game[kingRow][3] == ' ' &&
+            attackedFields[kingRow][1] && attackedFields[kingRow][2] && attackedFields[kingRow][3] /* i provjera napada */) {
             moves[*count].row = kingRow;
             moves[*count].col = 2;
             (*count)++;
         }
 
-        // Damska rokada (top na damskoj strani)
-        if (!hasRookMoved[1] && game[kingRow][5] == ' ' && game[kingRow][6] == ' ' /* i provjera napada */) {
+        // Kraljeva rokada (top na kraljevoj strani)
+        if (!hasRookMoved[0] && game[kingRow][5] == ' ' && game[kingRow][6] == ' ' &&
+            attackedFields[kingRow][5] && attackedFields[kingRow][6] /* i provjera napada */) {
+            moves[*count].row = kingRow;
+            moves[*count].col = 6;
+            (*count)++;
+        }
+    }
+    else if (king == 'K' && !hasKingMoved[1]) {    // rokada bijeli
+        int kingRow = startPos.row;
+
+        // Damska rokada (top na daminoj strani)
+        if (!hasRookMoved[3] && game[kingRow][1] == ' ' && game[kingRow][2] == ' ' && game[kingRow][3] == ' ' &&
+            attackedFields[kingRow][1] && attackedFields[kingRow][2] && attackedFields[kingRow][3] /* i provjera napada */) {
+            moves[*count].row = kingRow;
+            moves[*count].col = 2;
+            (*count)++;
+        }
+
+        // Kraljeva rokada (top na kraljevoj strani)
+        if (!hasRookMoved[2] && game[kingRow][5] == ' ' && game[kingRow][6] == ' ' &&
+            attackedFields[kingRow][5] && attackedFields[kingRow][6] /* i provjera napada */) {
             moves[*count].row = kingRow;
             moves[*count].col = 6;
             (*count)++;
@@ -781,7 +849,7 @@ Position* getKingMoves(char game[8][8], Position startPos, int* count, bool hasK
 
 
 
-void updateAttackedFields(char game[8][8], int attackedFields[8][8], char piece) {
+void updateAttackedFields(char game[8][8], int attackedFields[8][8], char piece, bool hasKingMoved[2], bool hasRookMoved[4]) {
     // Resetiranje polja
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
@@ -814,7 +882,7 @@ void updateAttackedFields(char game[8][8], int attackedFields[8][8], char piece)
                     moves = getQueenMoves(game, startPos, &count);
                     break;
                 case 'K':
-                    moves = getKingMoves(game, startPos, &count, false, (bool[]) { false, false }, attackedFields);
+                    moves = getKingMoves(game, startPos, &count, hasKingMoved, hasRookMoved, attackedFields);
                     break;
                 }
 
