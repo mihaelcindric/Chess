@@ -43,7 +43,7 @@ void updateAttackedFields(char game[8][8], int attackedFields[8][8], char piece,
 void castling(SDL_Renderer* renderer, char game[8][8], char piece, Position clickedPos, bool hasKingMoved[2], bool hasRookMoved[4]);
 void promotion(SDL_Renderer* renderer, char game[8][8], int row, int col);
 void resetBoardCenter(SDL_Renderer* renderer, char game[8][8]);
-bool isCheck(char game[8][8], char currentPlayer, int attackedFields[8][8]);
+bool isCheck(char game[8][8], int turn, int attackedFields[8][8]);
 bool isCheckmate(char game[8][8], char currentPlayer, int attackedFields[8][8]);
 bool isStalemate(char game[8][8], char currentPlayer, int attackedFields[8][8]);
 
@@ -245,6 +245,18 @@ void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Posit
 int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
+
+        // check
+        if (isCheck(game, *turn, attackedFields)) {
+            check = true;
+            printf("%s", "CHECK!!\n\n");
+        }
+        else {
+            check = false;
+            printf("%s", "NO CHECK!\n\n");
+        }
+
+
         if (event.type == SDL_QUIT) {
             return 0; // Korisnik želi zatvoriti prozor
         }
@@ -262,16 +274,6 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
                     *isMoving = true;
                     *startPos = clickedPos;
                     showCurrentlyChosen(renderer, game, clickedPos);
-
-                    // check
-                    if (isCheck(game, game[startPos->row][startPos->col], attackedFields)) {
-                        check = true;
-                        printf("%s", "CHECK!!\n\n");
-                    }
-                    else {
-                        check = false;
-                        printf("%s", "NO CHECK!\n\n");
-                    }
 
                     validMoves = getPossibleMoves(game, *startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove);
                     showPossibleMoves(renderer, game, validMoves, moveCount);
@@ -801,7 +803,7 @@ Position* getKingMoves(char game[8][8], Position startPos, int* count, bool hasK
         if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
             // Ako je unutar ploče
 
-            if (game[newRow][newCol] == ' ') {
+            if (game[newRow][newCol] == ' ' && attackedFields[newRow][newCol] == 0) {
                 moves[*count].row = newRow;
                 moves[*count].col = newCol;
                 (*count)++;
@@ -1076,20 +1078,20 @@ void resetBoardCenter(SDL_Renderer* renderer, char game[8][8]) {
 
 
 
-bool isCheck(char game[8][8], char currentPlayer, int attackedFields[8][8]) {
-    if (islower(currentPlayer)) {
+bool isCheck(char game[8][8], int turn, int attackedFields[8][8]) {
+    if (turn == 1) {    // white turn
         for (int i = 0; i < 8; i++) {
             for (int j = 0; j < 8; j++) {
-                if (attackedFields[i][j] == 1 && game[i][j] == 'k') {
+                if (attackedFields[i][j] == 1 && game[i][j] == 'K') {
                     return true;
                 }
             }
         }
     }
-    else {
+    else {  // black turn
         for (int i = 0; i < 8; i++) {
             for (int j = 0; j < 8; j++) {
-                if (attackedFields[i][j] == 1 && game[i][j] == 'K') {
+                if (attackedFields[i][j] == 1 && game[i][j] == 'k') {
                     return true;
                 }
             }
