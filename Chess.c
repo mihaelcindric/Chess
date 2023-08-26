@@ -44,9 +44,11 @@ void castling(SDL_Renderer* renderer, char game[8][8], char piece, Position clic
 void promotion(SDL_Renderer* renderer, char game[8][8], int row, int col);
 void resetBoardCenter(SDL_Renderer* renderer, char game[8][8]);
 bool isCheck(char game[8][8], int turn, int attackedFields[8][8]);
-bool isCheckmate(char game[8][8], int turn, int attackedFields[8][8]);
+bool isCheckmate(char game[8][8], int* turn, int* moveCount, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check);
 bool isStalemate(char game[8][8], int turn, int attackedFields[8][8]);
 void filterLegalMoves(char game[8][8], Position* moves, int* moveCount, Position startPos, int turn, bool hasKingMoved[2], bool hasRookMoved[4], Position* lastMove);
+void endGame();
+
 
 
 int main(int argc, char* argv[])
@@ -1114,15 +1116,38 @@ bool isCheck(char game[8][8], int turn, int attackedFields[8][8]) {
 }
 
 
-bool isCheckmate(char board[8][8], int turn, int attackedFields[8][8]) {
-    // Provjerite je li kralj u šahu-matu
+bool isCheckmate(char game[8][8], int* turn, int* moveCount, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check) {
+    if (turn == 1) {    // white turn
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                Position startPos = { i, j };
+                if (isupper(game[i][j]) && getPossibleMoves(game, turn, startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove, check)) {
+                    return false;
+                }
+            }
+        }
+    }
+    else {  // black turn
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                Position startPos = { i, j };
+                if (islower(game[i][j]) && getPossibleMoves(game, turn, startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove, check)) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    return true;
 }
 
 bool isStalemate(char board[8][8], int turn, int attackedFields[8][8]) {
     // Provjerite je li situacija pat
 }
 
-
+void endGame() {
+    // TODO
+}
 
 
 
@@ -1151,3 +1176,5 @@ void filterLegalMoves(char game[8][8], Position* moves, int* moveCount, Position
 
     *moveCount = writeIdx;
 }
+
+
