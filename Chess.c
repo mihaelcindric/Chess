@@ -28,11 +28,11 @@ typedef struct {
 void drawBoard(SDL_Renderer* renderer, char game[8][8]);
 void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Position newPos);
 int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check);
-Position* getPossibleMoves(char game[8][8], int turn, Position startPos, int* moveCount, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check);
+Position* getPossibleMoves(char game[8][8], int turn, Position startPos, int* moveCount, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove);
 void drawPiece(SDL_Renderer* renderer, char piece, int row, int col);
 void showPossibleMoves(SDL_Renderer* renderer, char game[8][8], Position possibleMoves[], int count);
 void showCurrentlyChosen(SDL_Renderer* renderer, char game[8][8], Position chosenPosition);
-void resetBoardFields(SDL_Renderer* renderer, char game[8][8], int turn, Position startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check);
+void resetBoardFields(SDL_Renderer* renderer, char game[8][8], int turn, Position startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove);
 Position* getPawnMoves(char game[8][8], Position startPos, int* count, Position* lastMove);
 Position* getRookMoves(char game[8][8], Position startPos, int* count);
 Position* getKnightMoves(char game[8][8], Position startPos, int* count);
@@ -44,8 +44,8 @@ void castling(SDL_Renderer* renderer, char game[8][8], char piece, Position clic
 void promotion(SDL_Renderer* renderer, char game[8][8], int row, int col);
 void resetBoardCenter(SDL_Renderer* renderer, char game[8][8]);
 bool isCheck(char game[8][8], int turn, int attackedFields[8][8]);
-bool isCheckmate(char game[8][8], int turn, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check);
-bool isStalemate(char game[8][8], int turn, int attackedFields[8][8]);
+bool isCheckmate(char game[8][8], int turn, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove);
+bool isStalemate(char game[8][8], int turn, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove);
 void filterLegalMoves(char game[8][8], Position* moves, int* moveCount, Position startPos, int turn, bool hasKingMoved[2], bool hasRookMoved[4], Position* lastMove);
 void endGame();
 
@@ -254,13 +254,17 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
             check = true;
             
             // checkmate
-            if (isCheckmate(game, *turn, hasKingMoved, hasRookMoved, attackedFields, lastMove, check)) {
+            if (isCheckmate(game, *turn, hasKingMoved, hasRookMoved, attackedFields, lastMove)) {
                 printf("%s", "CHECK-MATE!\n");
             }
         }
         else {
             check = false;
-            
+
+            // stalemate
+            if (isStalemate(game, *turn, hasKingMoved, hasRookMoved, attackedFields, lastMove)) {
+                printf("%s", "STALE-MATE!\n");
+            }
         }
 
 
@@ -282,7 +286,7 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
                     *startPos = clickedPos;
                     showCurrentlyChosen(renderer, game, clickedPos);
 
-                    validMoves = getPossibleMoves(game, *turn, *startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove, check);
+                    validMoves = getPossibleMoves(game, *turn, *startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove);
                     
                     showPossibleMoves(renderer, game, validMoves, moveCount);
                 }
@@ -293,18 +297,18 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
                 char targetPiece = game[clickedPos.row][clickedPos.col];
                 if ((isupper(selectedPiece) && isupper(targetPiece)) ||
                     (islower(selectedPiece) && islower(targetPiece))) {
-                    resetBoardFields(renderer, game, *turn, *startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove, check);
+                    resetBoardFields(renderer, game, *turn, *startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove);
 
                     // Mijenjanje odabrane figure
                     *startPos = clickedPos;
 
                     showCurrentlyChosen(renderer, game, clickedPos);
 
-                    validMoves = getPossibleMoves(game, *turn, *startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove, check);
+                    validMoves = getPossibleMoves(game, *turn, *startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove);
                     showPossibleMoves(renderer, game, validMoves, moveCount);
                 }
                 else {
-                    validMoves = getPossibleMoves(game, *turn, *startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove, check);
+                    validMoves = getPossibleMoves(game, *turn, *startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove);
 
                     showPossibleMoves(renderer, game, validMoves, moveCount);
 
@@ -317,7 +321,7 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
                     }
 
                     if (validMove) {
-                        resetBoardFields(renderer, game, *turn, *startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove, check);
+                        resetBoardFields(renderer, game, *turn, *startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove);
 
                         char piece = game[startPos->row][startPos->col];
                         game[startPos->row][startPos->col] = ' ';
@@ -361,7 +365,7 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
                     else {
                         // Ako potez nije valjan, resetiraj status pomicanja
                         *isMoving = false;
-                        resetBoardFields(renderer, game, *turn, *startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove, check);
+                        resetBoardFields(renderer, game, *turn, *startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove);
                     }
                 }
             }
@@ -372,7 +376,7 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
 }
 
 
-Position* getPossibleMoves(char game[8][8], int turn, Position startPos, int* moveCount, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check) {
+Position* getPossibleMoves(char game[8][8], int turn, Position startPos, int* moveCount, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove) {
     char selectedPiece = game[startPos.row][startPos.col];
     Position* validMoves = NULL;
 
@@ -397,9 +401,8 @@ Position* getPossibleMoves(char game[8][8], int turn, Position startPos, int* mo
         break;
     }
 
-    if (check || tolower(selectedPiece) == 'k') {
-        filterLegalMoves(game, validMoves, moveCount, startPos, turn, hasKingMoved, hasRookMoved, lastMove);
-    }
+    // remove any moves that lead to check/check-mate
+    filterLegalMoves(game, validMoves, moveCount, startPos, turn, hasKingMoved, hasRookMoved, lastMove);
 
     return validMoves;
 }
@@ -474,9 +477,9 @@ void showCurrentlyChosen(SDL_Renderer* renderer, char game[8][8], Position chose
 }
 
 
-void resetBoardFields(SDL_Renderer* renderer, char game[8][8], int turn, Position startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check) {
+void resetBoardFields(SDL_Renderer* renderer, char game[8][8], int turn, Position startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove) {
     int moveCount;
-    Position* positions = getPossibleMoves(game, turn, startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove, check);
+    Position* positions = getPossibleMoves(game, turn, startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove);
 
     // Resetiranje izgleda polja na kojemu je figura
     if ((startPos.row + startPos.col) % 2 == 0) {
@@ -1120,7 +1123,7 @@ bool isCheck(char game[8][8], int turn, int attackedFields[8][8]) {
 }
 
 
-bool isCheckmate(char game[8][8], int turn, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check) {
+bool isCheckmate(char game[8][8], int turn, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove) {
     Position startPos = { 0, 0 };
     int moveCount = 0;
 
@@ -1130,7 +1133,7 @@ bool isCheckmate(char game[8][8], int turn, bool hasKingMoved[2], bool hasRookMo
                 startPos.row = i;
                 startPos.col = j;
 
-                if (isupper(game[i][j]) && getPossibleMoves(game, turn, startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove, check)) {
+                if (isupper(game[i][j]) && getPossibleMoves(game, turn, startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove)) {
                     if (moveCount > 0)
                         return false;
                 }
@@ -1143,7 +1146,7 @@ bool isCheckmate(char game[8][8], int turn, bool hasKingMoved[2], bool hasRookMo
                 startPos.row = i;
                 startPos.col = j;
 
-                if (islower(game[i][j]) && getPossibleMoves(game, turn, startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove, check)) {
+                if (islower(game[i][j]) && getPossibleMoves(game, turn, startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove)) {
                     if (moveCount > 0)
                         return false;
                 }
@@ -1154,8 +1157,38 @@ bool isCheckmate(char game[8][8], int turn, bool hasKingMoved[2], bool hasRookMo
     return true;
 }
 
-bool isStalemate(char board[8][8], int turn, int attackedFields[8][8]) {
-    // Provjerite je li situacija pat
+bool isStalemate(char game[8][8], int turn, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove) {
+    Position startPos = { 0, 0 };
+    int moveCount = 0;
+
+    if (turn == 1) {    // white turn
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                startPos.row = i;
+                startPos.col = j;
+
+                if (isupper(game[i][j]) && getPossibleMoves(game, turn, startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove)) {
+                    if (moveCount > 0)
+                        return false;
+                }
+            }
+        }
+    }
+    else {  // black turn
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                startPos.row = i;
+                startPos.col = j;
+
+                if (islower(game[i][j]) && getPossibleMoves(game, turn, startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove)) {
+                    if (moveCount > 0)
+                        return false;
+                }
+            }
+        }
+    }
+
+    return true;
 }
 
 void endGame() {
