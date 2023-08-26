@@ -27,7 +27,7 @@ typedef struct {
 
 void drawBoard(SDL_Renderer* renderer, char game[8][8]);
 void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Position newPos);
-int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check);
+int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check);
 Position* getPossibleMoves(char game[8][8], Position startPos, int* moveCount, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove);
 void drawPiece(SDL_Renderer* renderer, char piece, int row, int col);
 void showPossibleMoves(SDL_Renderer* renderer, char game[8][8], Position possibleMoves[], int count);
@@ -61,9 +61,11 @@ int main(int argc, char* argv[])
     {'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'}
     };
 
+    int turn = 1;   // white = 1, black = -1
+
     char fenString[] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-    int isMoving = 0;
+    bool isMoving = false;
     Position startPos = { 0, 0 };
 
     bool hasKingMoved[2] = { false, false };    // black, white
@@ -74,6 +76,7 @@ int main(int argc, char* argv[])
     bool check = false;
 
     int attackedFields[8][8] = { 0 };
+
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         printf("Error initializing SDL: %s\n", SDL_GetError());
@@ -103,7 +106,7 @@ int main(int argc, char* argv[])
 
 
     while (1) {
-        if (!handlePieceMovement(renderer, game, &isMoving, &startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove, check)) {
+        if (!handlePieceMovement(renderer, game, &turn, &isMoving, &startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove, check)) {
             break; // Ako korisnik želi zatvoriti prozor
         }
         SDL_Delay(100);
@@ -183,8 +186,8 @@ void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Posit
     Position positions[2] = { oldPos, newPos };
 
     for (int pos = 0; pos < 2; pos++) {
-        int i = positions[pos].row;
-        int j = positions[pos].col;
+        int i = positions[pos].col;
+        int j = positions[pos].row;
 
         SDL_Rect rect = { i * 80, j * 80, 80, 80 };
         if ((i + j) % 2 == 0) {
@@ -195,9 +198,38 @@ void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Posit
         }
         SDL_RenderFillRect(renderer, &rect);
 
-        char piece = game[i][j];
+        char piece = game[j][i];
         if (piece != ' ') {
-            drawPiece(renderer, piece, i, j);
+            char color[6];
+            if (islower(piece)) {
+                strcpy(color, "black");
+            }
+            else {
+                strcpy(color, "white");
+            }
+            piece = tolower(piece);
+
+            char pieceName[7];
+            switch (piece) {
+            case 'r': strcpy(pieceName, "rook"); break;
+            case 'n': strcpy(pieceName, "knight"); break;
+            case 'b': strcpy(pieceName, "bishop"); break;
+            case 'q': strcpy(pieceName, "queen"); break;
+            case 'k': strcpy(pieceName, "king"); break;
+            case 'p': strcpy(pieceName, "pawn"); break;
+            default: strcpy(pieceName, ""); break;
+            }
+
+            char path[50];
+            sprintf(path, "img/%s_%s.png", pieceName, color);
+            SDL_Surface* surface = IMG_Load(path);
+            SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+            SDL_FreeSurface(surface);
+
+            SDL_Rect destRect = { i * 80 + 20, j * 80 + 10, 40, 60 };
+            SDL_RenderCopy(renderer, texture, NULL, &destRect);
+            SDL_DestroyTexture(texture);
+
         }
     }
     SDL_RenderPresent(renderer);
@@ -210,7 +242,7 @@ void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Posit
 
 
 
-int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check) {
+int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_QUIT) {
@@ -226,8 +258,8 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, 
 
 
             if (!(*isMoving)) {
-                if (game[clickedPos.row][clickedPos.col] != ' ') { // Ako je na polju figura
-                    *isMoving = 1;
+                if (*turn == 1 && isupper(game[clickedPos.row][clickedPos.col]) || *turn == -1 && islower(game[clickedPos.row][clickedPos.col])) { // Ako je na polju figura
+                    *isMoving = true;
                     *startPos = clickedPos;
                     showCurrentlyChosen(renderer, game, clickedPos);
 
@@ -280,7 +312,7 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, 
                         char piece = game[startPos->row][startPos->col];
                         game[startPos->row][startPos->col] = ' ';
                         game[clickedPos.row][clickedPos.col] = piece;
-                        *isMoving = 0; // Resetiranje statusa pomicanja
+                        *isMoving = false; // Resetiranje statusa pomicanja
 
                         // promotion
                         if (piece == 'p' && clickedPos.row == 7 || piece == 'P' && clickedPos.row == 0) {
@@ -313,11 +345,12 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, 
 
                         updateBoard(renderer, game, *startPos, clickedPos); // Poziv updateBoard funkcije
                         updateAttackedFields(game, attackedFields, piece, hasKingMoved, hasRookMoved, lastMove);  // Updating currently attacked fields
-
+                        
+                        *turn *= -1;    // swiching the turn
                     }
                     else {
                         // Ako potez nije valjan, resetiraj status pomicanja
-                        *isMoving = 0;
+                        *isMoving = false;
                         resetBoardFields(renderer, game, *startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove);
                     }
                 }
