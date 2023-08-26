@@ -44,8 +44,8 @@ void castling(SDL_Renderer* renderer, char game[8][8], char piece, Position clic
 void promotion(SDL_Renderer* renderer, char game[8][8], int row, int col);
 void resetBoardCenter(SDL_Renderer* renderer, char game[8][8]);
 bool isCheck(char game[8][8], int turn, int attackedFields[8][8]);
-bool isCheckmate(char game[8][8], char currentPlayer, int attackedFields[8][8]);
-bool isStalemate(char game[8][8], char currentPlayer, int attackedFields[8][8]);
+bool isCheckmate(char game[8][8], int turn, int attackedFields[8][8]);
+bool isStalemate(char game[8][8], int turn, int attackedFields[8][8]);
 
 
 int main(int argc, char* argv[])
@@ -1102,10 +1102,10 @@ bool isCheck(char game[8][8], int turn, int attackedFields[8][8]) {
 }
 
 
-bool isCheckmate(char board[8][8], char currentPlayer, int attackedFields[8][8]) {
+bool isCheckmate(char board[8][8], int turn, int attackedFields[8][8]) {
     // Provjerite je li kralj u šahu-matu
 }
 
-bool isStalemate(char board[8][8], char currentPlayer, int attackedFields[8][8]) {
+bool isStalemate(char board[8][8], int turn, int attackedFields[8][8]) {
     // Provjerite je li situacija pat
 }
