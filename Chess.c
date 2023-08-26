@@ -27,7 +27,7 @@ typedef struct {
 
 void drawBoard(SDL_Renderer* renderer, char game[8][8]);
 void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Position newPos);
-int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove);
+int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check);
 Position* getPossibleMoves(char game[8][8], Position startPos, int* moveCount, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove);
 void drawPiece(SDL_Renderer* renderer, char piece, int row, int col);
 void showPossibleMoves(SDL_Renderer* renderer, char game[8][8], Position possibleMoves[], int count);
@@ -43,6 +43,9 @@ void updateAttackedFields(char game[8][8], int attackedFields[8][8], char piece,
 void castling(SDL_Renderer* renderer, char game[8][8], char piece, Position clickedPos, bool hasKingMoved[2], bool hasRookMoved[4]);
 void promotion(SDL_Renderer* renderer, char game[8][8], int row, int col);
 void resetBoardCenter(SDL_Renderer* renderer, char game[8][8]);
+bool isCheck(char game[8][8], char currentPlayer, int attackedFields[8][8]);
+bool isCheckmate(char game[8][8], char currentPlayer, int attackedFields[8][8]);
+bool isStalemate(char game[8][8], char currentPlayer, int attackedFields[8][8]);
 
 
 int main(int argc, char* argv[])
@@ -67,6 +70,8 @@ int main(int argc, char* argv[])
     bool hasRookMoved[4] = { false, false, false, false };  // black-left, black-right, white-left, white-right
 
     Position lastMove[2] = { {0, 0}, {0, 0} };
+
+    bool check = false;
 
     int attackedFields[8][8] = { 0 };
 
@@ -98,7 +103,7 @@ int main(int argc, char* argv[])
 
 
     while (1) {
-        if (!handlePieceMovement(renderer, game, &isMoving, &startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove)) {
+        if (!handlePieceMovement(renderer, game, &isMoving, &startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove, check)) {
             break; // Ako korisnik želi zatvoriti prozor
         }
         SDL_Delay(100);
@@ -178,8 +183,8 @@ void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Posit
     Position positions[2] = { oldPos, newPos };
 
     for (int pos = 0; pos < 2; pos++) {
-        int i = positions[pos].col;
-        int j = positions[pos].row;
+        int i = positions[pos].row;
+        int j = positions[pos].col;
 
         SDL_Rect rect = { i * 80, j * 80, 80, 80 };
         if ((i + j) % 2 == 0) {
@@ -190,37 +195,9 @@ void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Posit
         }
         SDL_RenderFillRect(renderer, &rect);
 
-        char piece = game[j][i];
+        char piece = game[i][j];
         if (piece != ' ') {
-            char color[6];
-            if (islower(piece)) {
-                strcpy(color, "black");
-            }
-            else {
-                strcpy(color, "white");
-            }
-            piece = tolower(piece);
-
-            char pieceName[7];
-            switch (piece) {
-            case 'r': strcpy(pieceName, "rook"); break;
-            case 'n': strcpy(pieceName, "knight"); break;
-            case 'b': strcpy(pieceName, "bishop"); break;
-            case 'q': strcpy(pieceName, "queen"); break;
-            case 'k': strcpy(pieceName, "king"); break;
-            case 'p': strcpy(pieceName, "pawn"); break;
-            default: strcpy(pieceName, ""); break;
-            }
-
-            char path[50];
-            sprintf(path, "img/%s_%s.png", pieceName, color);
-            SDL_Surface* surface = IMG_Load(path);
-            SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
-            SDL_FreeSurface(surface);
-
-            SDL_Rect destRect = { i * 80 + 20, j * 80 + 10, 40, 60 };
-            SDL_RenderCopy(renderer, texture, NULL, &destRect);
-            SDL_DestroyTexture(texture);
+            drawPiece(renderer, piece, i, j);
         }
     }
     SDL_RenderPresent(renderer);
@@ -233,7 +210,7 @@ void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Posit
 
 
 
-int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove) {
+int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_QUIT) {
@@ -247,11 +224,22 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, 
             SDL_GetMouseState(&x, &y);
             Position clickedPos = { y / 80, x / 80 };
 
+
             if (!(*isMoving)) {
                 if (game[clickedPos.row][clickedPos.col] != ' ') { // Ako je na polju figura
                     *isMoving = 1;
                     *startPos = clickedPos;
                     showCurrentlyChosen(renderer, game, clickedPos);
+
+                    // check
+                    if (isCheck(game, game[startPos->row][startPos->col], attackedFields)) {
+                        check = true;
+                        printf("%s", "CHECK!!\n\n");
+                    }
+                    else {
+                        check = false;
+                        printf("%s", "NO CHECK!\n\n");
+                    }
 
                     validMoves = getPossibleMoves(game, *startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove);
                     showPossibleMoves(renderer, game, validMoves, moveCount);
@@ -319,6 +307,9 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* isMoving, 
                         // update last/previous move
                         lastMove[0] = *startPos;
                         lastMove[1] = clickedPos;
+
+                        // check
+                        printf("%s\n\n", isCheck(game, piece, attackedFields) ? "true" : "false");
 
                         updateBoard(renderer, game, *startPos, clickedPos); // Poziv updateBoard funkcije
                         updateAttackedFields(game, attackedFields, piece, hasKingMoved, hasRookMoved, lastMove);  // Updating currently attacked fields
@@ -1047,4 +1038,39 @@ void resetBoardCenter(SDL_Renderer* renderer, char game[8][8]) {
         Position second = { rows[1], cols[i] };
         updateBoard(renderer, game, first, second);
     }
+}
+
+
+
+
+bool isCheck(char game[8][8], char currentPlayer, int attackedFields[8][8]) {
+    if (islower(currentPlayer)) {
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                if (attackedFields[i][j] == 1 && game[i][j] == 'k') {
+                    return true;
+                }
+            }
+        }
+    }
+    else {
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                if (attackedFields[i][j] == 1 && game[i][j] == 'K') {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+
+bool isCheckmate(char board[8][8], char currentPlayer, int attackedFields[8][8]) {
+    // Provjerite je li kralj u šahu-matu
+}
+
+bool isStalemate(char board[8][8], char currentPlayer, int attackedFields[8][8]) {
+    // Provjerite je li situacija pat
 }
