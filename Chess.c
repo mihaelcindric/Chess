@@ -2,6 +2,7 @@
 
 #include "stdio.h"
 #include "string.h"
+#include "stdlib.h""
 #include "stdbool.h"
 #include "ctype.h"
 #include "SDL.h"
@@ -27,7 +28,7 @@ typedef struct {
 
 void drawBoard(SDL_Renderer* renderer, char game[8][8]);
 void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Position newPos);
-int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check);
+int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check, char* currentBoard, int* halfMoves);
 Position* getPossibleMoves(char game[8][8], int turn, Position startPos, int* moveCount, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove);
 void drawPiece(SDL_Renderer* renderer, char piece, int row, int col);
 void showPossibleMoves(SDL_Renderer* renderer, char game[8][8], Position possibleMoves[], int count);
@@ -48,8 +49,11 @@ bool isCheckmate(char game[8][8], int turn, bool hasKingMoved[2], bool hasRookMo
 bool isStalemate(char game[8][8], int turn, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove);
 void filterLegalMoves(char game[8][8], Position* moves, int* moveCount, Position startPos, int turn, bool hasKingMoved[2], bool hasRookMoved[4], Position* lastMove);
 void endGame();
-
-
+void drawGame();
+bool isEnPassantPossible(Position* lastMove, Position startPos, char piece, char game[8][8]);
+// bool* isCastlingPossible(char piece, char game[8][8], bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8]);
+void loadLastBoardState(char game[8][8], char* currentBoard, int* halfMoves, int* turn);
+char* storeCurrentBoardState(char game[8][8], int turn, char* elpassant, int halfMoves);
 
 int main(int argc, char* argv[])
 {
@@ -64,9 +68,10 @@ int main(int argc, char* argv[])
     {'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'}
     };
 
+    
+    char currentBoard[90] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - 0";
+    int halfMoves = 0;
     int turn = 1;   // white = 1, black = -1
-
-    char fenString[] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
     bool isMoving = false;
     Position startPos = { 0, 0 };
@@ -105,11 +110,17 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+
+    loadLastBoardState(game, currentBoard, &halfMoves, &turn);
+
     drawBoard(renderer, game);
 
+    if (halfMoves == 0) {   // new game
+        storeCurrentBoardState(game, turn, "-", halfMoves);
+    }
 
     while (1) {
-        if (!handlePieceMovement(renderer, game, &turn, &isMoving, &startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove, check)) {
+        if (!handlePieceMovement(renderer, game, &turn, &isMoving, &startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove, check, currentBoard, &halfMoves)) {
             break; // Ako korisnik želi zatvoriti prozor
         }
         SDL_Delay(100);
@@ -245,7 +256,7 @@ void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Posit
 
 
 
-int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check) {
+int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check, char* currentBoard, int* halfMoves) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
 
@@ -322,7 +333,8 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
 
                     if (validMove) {
                         resetBoardFields(renderer, game, *turn, *startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove);
-
+                        char enPassant[3] = "-";
+                        
                         char piece = game[startPos->row][startPos->col];
                         game[startPos->row][startPos->col] = ' ';
                         game[clickedPos.row][clickedPos.col] = piece;
@@ -354,13 +366,22 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
                         lastMove[0] = *startPos;
                         lastMove[1] = clickedPos;
 
-                        // check
-                        printf("%s\n\n", isCheck(game, piece, attackedFields) ? "true" : "false");
 
                         updateBoard(renderer, game, *startPos, clickedPos); // Poziv updateBoard funkcije
                         updateAttackedFields(game, attackedFields, *turn, hasKingMoved, hasRookMoved, lastMove);  // Updating currently attacked fields
-                        
+
                         *turn *= -1;    // swiching the turn
+                        (*halfMoves)++;
+
+                        // storing data
+                        if (piece == 'p' || piece == 'P' && abs(startPos->row - clickedPos.row) == 2) {
+                            if (*turn == 1)
+                                sprintf(enPassant, "%d%d", clickedPos.row - 1, clickedPos.col);
+                            else
+                                sprintf(enPassant, "%d%d", clickedPos.row + 1, clickedPos.col);
+                        }
+                        strcpy(currentBoard, storeCurrentBoardState(game, *turn, enPassant, *halfMoves));   // spremanje stanja prije samog poteza
+
                     }
                     else {
                         // Ako potez nije valjan, resetiraj status pomicanja
@@ -576,20 +597,14 @@ Position* getPawnMoves(char game[8][8], Position startPos, int* count, Position*
         }
 
         // Provjera za "en passant"
-        if (lastMove[1].row == startPos.row && (lastMove[1].col == startPos.col - 1 || lastMove[1].col == startPos.col + 1) // provjera je li zadnji potez zavrsio do trenutnog pocetnog
-            && abs(lastMove[0].row - lastMove[1].row) == 2) {   // provjera je li zadnji potez bio preko dva polja
-            if (game[startPos.row][startPos.col] == 'p' && game[lastMove[1].row][lastMove[1].col] == 'P' ||
-                game[startPos.row][startPos.col] == 'P' && game[lastMove[1].row][lastMove[1].col] == 'p') { // provjera jesu li obje figure pijuni razlicitih boja
-                
-                int direction = islower(game[startPos.row][startPos.col]) ? 1 : -1;
-                if (game[startPos.row + direction][startPos.col] == ' ') {
-                    moves[*count].row = startPos.row + direction;
-                    moves[*count].col = lastMove[1].col;
-                    (*count)++;
-                }
+        if (isEnPassantPossible(lastMove, startPos, game[startPos.row][startPos.col], game)) {
+            int direction = islower(game[startPos.row][startPos.col]) ? 1 : -1;
+            if (game[startPos.row + direction][startPos.col] == ' ') {
+                moves[*count].row = startPos.row + direction;
+                moves[*count].col = lastMove[1].col;
+                (*count)++;
             }
         }
-
     }
 
     return moves;
@@ -840,7 +855,7 @@ Position* getKingMoves(char game[8][8], Position startPos, int* count, bool hasK
 
         // Damska rokada (top na daminoj strani)
         if (!hasRookMoved[1] && game[kingRow][1] == ' ' && game[kingRow][2] == ' ' && game[kingRow][3] == ' ' &&
-            attackedFields[kingRow][1] && attackedFields[kingRow][2] && attackedFields[kingRow][3] /* i provjera napada */) {
+            attackedFields[kingRow][1] == 0 && attackedFields[kingRow][2] == 0 && attackedFields[kingRow][3] == 0 /* i provjera napada */) {
             moves[*count].row = kingRow;
             moves[*count].col = 2;
             (*count)++;
@@ -848,7 +863,7 @@ Position* getKingMoves(char game[8][8], Position startPos, int* count, bool hasK
 
         // Kraljeva rokada (top na kraljevoj strani)
         if (!hasRookMoved[0] && game[kingRow][5] == ' ' && game[kingRow][6] == ' ' &&
-            attackedFields[kingRow][5] && attackedFields[kingRow][6] /* i provjera napada */) {
+            attackedFields[kingRow][5] == 0 && attackedFields[kingRow][6] == 0 /* i provjera napada */) {
             moves[*count].row = kingRow;
             moves[*count].col = 6;
             (*count)++;
@@ -859,7 +874,7 @@ Position* getKingMoves(char game[8][8], Position startPos, int* count, bool hasK
 
         // Damska rokada (top na daminoj strani)
         if (!hasRookMoved[3] && game[kingRow][1] == ' ' && game[kingRow][2] == ' ' && game[kingRow][3] == ' ' &&
-            attackedFields[kingRow][1] && attackedFields[kingRow][2] && attackedFields[kingRow][3] /* i provjera napada */) {
+            attackedFields[kingRow][1] == 0 && attackedFields[kingRow][2] == 0 && attackedFields[kingRow][3] == 0 /* i provjera napada */) {
             moves[*count].row = kingRow;
             moves[*count].col = 2;
             (*count)++;
@@ -867,7 +882,7 @@ Position* getKingMoves(char game[8][8], Position startPos, int* count, bool hasK
 
         // Kraljeva rokada (top na kraljevoj strani)
         if (!hasRookMoved[2] && game[kingRow][5] == ' ' && game[kingRow][6] == ' ' &&
-            attackedFields[kingRow][5] && attackedFields[kingRow][6] /* i provjera napada */) {
+            attackedFields[kingRow][5] == 0 && attackedFields[kingRow][6] == 0 /* i provjera napada */) {
             moves[*count].row = kingRow;
             moves[*count].col = 6;
             (*count)++;
@@ -1195,6 +1210,10 @@ void endGame() {
     // TODO
 }
 
+void drawGame() {
+    // TODO
+}
+
 
 
 void filterLegalMoves(char game[8][8], Position* moves, int* moveCount, Position startPos, int turn, bool hasKingMoved[2], bool hasRookMoved[4], Position* lastMove) {
@@ -1224,3 +1243,150 @@ void filterLegalMoves(char game[8][8], Position* moves, int* moveCount, Position
 }
 
 
+bool isEnPassantPossible(Position* lastMove, Position startPos, char piece, char game[8][8]) {
+    if ((piece == 'p' || piece == 'P') && abs(lastMove[1].col - startPos.col) == 1) {
+        if (lastMove[1].row == startPos.row && (lastMove[1].col == startPos.col - 1 || lastMove[1].col == startPos.col + 1)
+            && abs(lastMove[0].row - lastMove[1].row) == 2) {
+            if ((piece == 'p' && game[lastMove[1].row][lastMove[1].col] == 'P') ||
+                (piece == 'P' && game[lastMove[1].row][lastMove[1].col] == 'p')) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+
+/*
+bool* isCastlingPossible(char piece, char game[8][8], bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8]) {
+    static bool possibleCastling[4]; // static kako bi se sačuvala vrijednost između poziva
+
+    // Resetiraj niz na false
+    for (int i = 0; i < 4; i++) {
+        possibleCastling[i] = false;
+    }
+
+    int kingRow = (piece == 'k' || piece == 'K') ? (piece == 'k' ? 0 : 7) : -1;
+    if (kingRow == -1) {
+        return possibleCastling;
+    }
+
+    int kingMovedIndex = (piece == 'k') ? 0 : 1;
+    int rookStartIndex = (piece == 'k') ? 0 : 2;
+
+    if (!hasKingMoved[kingMovedIndex]) {
+        // Provjera lijeva (damska) rokada
+        if (!hasRookMoved[rookStartIndex + 1] && game[kingRow][1] == ' ' && game[kingRow][2] == ' ' && game[kingRow][3] == ' ' &&
+            !attackedFields[kingRow][1] == 0 && !attackedFields[kingRow][2] == 0 && !attackedFields[kingRow][3] == 0) {
+            possibleCastling[rookStartIndex] = true;
+        }
+
+        // Provjera desna (kraljeva) rokada
+        if (!hasRookMoved[rookStartIndex] && game[kingRow][5] == ' ' && game[kingRow][6] == ' ' &&
+            !attackedFields[kingRow][5] == 0 && !attackedFields[kingRow][6] == 0) {
+            possibleCastling[rookStartIndex + 1] = true;
+        }
+    }
+
+    return possibleCastling;
+}
+*/
+
+
+
+
+void loadLastBoardState(char game[8][8], char* currentBoard, int* halfMoves, int* turn) {
+    FILE* historyFile = fopen("game_history.txt", "r");
+    if (historyFile != NULL) {
+        char lastLine[100];
+        while (fgets(lastLine, sizeof(lastLine), historyFile) != NULL) {
+            // samo čitamo do kraja datoteke
+        }
+        fclose(historyFile);
+
+        strcpy(currentBoard, lastLine);
+
+        // Razdvajamo na dijelove
+        char* token = strtok(lastLine, " ");
+        int row = 0, col = 0;
+
+        // Postavljanje ploče
+        while (token[0] != 'w' && token[0] != 'b') {
+            for (int i = 0; i < strlen(token); i++) {
+                if (isdigit(token[i])) {
+                    int spaces = token[i] - '0';
+                    while (spaces--) {
+                        game[row][col++] = ' ';
+                    }
+                }
+                else {
+                    game[row][col++] = token[i];
+                }
+            }
+            row++;
+            col = 0;
+            token = strtok(NULL, " ");
+        }
+
+        // Postavljanje tura
+        *turn = (token[0] == 'w') ? 1 : -1;
+
+        // Preskačemo elpassant (pošto nije potrebno za sada)
+        token = strtok(NULL, " ");
+
+        // Postavljanje halfMoves
+        token = strtok(NULL, " ");
+        *halfMoves = atoi(token);
+    }
+}
+
+
+
+char* storeCurrentBoardState(char game[8][8], int turn, char* elpassant, int halfMoves) {
+    FILE* historyFile = fopen("game_history.txt", "a");
+    if (historyFile == NULL) {
+        perror("Could not open the file");
+        return NULL;
+    }
+
+    char currentBoard[90];
+    int idx = 0;
+
+    for (int row = 0; row < 8; ++row) {
+        int emptyCount = 0;
+        for (int col = 0; col < 8; ++col) {
+            char c = game[row][col];
+            if (c == ' ') {
+                emptyCount++;
+            }
+            else {
+                if (emptyCount != 0) {
+                    currentBoard[idx++] = '0' + emptyCount;
+                }
+                emptyCount = 0;
+                currentBoard[idx++] = c;
+            }
+        }
+        if (emptyCount != 0) {
+            currentBoard[idx++] = '0' + emptyCount;
+        }
+        currentBoard[idx++] = ' ';
+    }
+
+    currentBoard[idx++] = (turn == 1) ? 'w' : 'b';
+    currentBoard[idx++] = ' ';
+
+    strcpy(currentBoard + idx, elpassant);
+    idx += strlen(elpassant);
+
+    currentBoard[idx++] = ' ';
+
+    char halfMoveString[10];
+    snprintf(halfMoveString, 10, "%d", halfMoves);
+    strcpy(currentBoard + idx, halfMoveString);
+
+    fprintf(historyFile, "%s\n", currentBoard);
+    fclose(historyFile);
+
+    return currentBoard;
+}
