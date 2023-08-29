@@ -54,6 +54,8 @@ bool isEnPassant(Position* lastMove, Position startPos, char piece, char game[8]
 char* isCastlingPossible(char piece, char game[8][8], bool hasKingMoved[2], bool hasRookMoved[4], Position* lastMove);
 void loadLastBoardState(char game[8][8], char* currentBoard, int* halfMoves, int* turn);
 char* storeCurrentBoardState(char game[8][8], int turn, char* castlingFEN, char* enPassantFEN, int halfMoves);
+bool isThreefoldRepetition(const char* lastBoardState);
+
 
 int main(int argc, char* argv[])
 {
@@ -267,6 +269,7 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
             // checkmate
             if (isCheckmate(game, *turn, hasKingMoved, hasRookMoved, attackedFields, lastMove)) {
                 printf("%s", "CHECK-MATE!\n");
+                endGame();
             }
         }
         else {
@@ -275,6 +278,11 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
             // stalemate
             if (isStalemate(game, *turn, hasKingMoved, hasRookMoved, attackedFields, lastMove)) {
                 printf("%s", "STALE-MATE!\n");
+                drawGame();
+            }
+            if (isThreefoldRepetition(currentBoard)) {
+                printf("%s", "THREEFOLD REPETITION!\n");
+                drawGame();
             }
         }
 
@@ -1347,24 +1355,29 @@ void loadLastBoardState(char game[8][8], char* currentBoard, int* halfMoves, int
         int row = 0, col = 0;
 
         // Postavljanje ploče
-        while (token[0] != 'w' && token[0] != 'b') {
-            for (int i = 0; i < strlen(token); i++) {
-                if (isdigit(token[i])) {
-                    int spaces = token[i] - '0';
+        char* boardToken = strtok(token, "/");
+        while (boardToken) {
+            for (int i = 0; i < strlen(boardToken); i++) {
+                if (isdigit(boardToken[i])) {
+                    int spaces = boardToken[i] - '0';
                     while (spaces--) {
                         game[row][col++] = ' ';
                     }
                 }
                 else {
-                    game[row][col++] = token[i];
+                    game[row][col++] = boardToken[i];
                 }
             }
             row++;
             col = 0;
-            token = strtok(NULL, " ");
+            boardToken = strtok(NULL, "/ ");
         }
 
-        // Postavljanje tura
+        strcpy(lastLine, currentBoard);
+        token = strtok(lastLine, " ");
+        token = strtok(NULL, " ");
+        
+        // Postavljanje turna
         *turn = (token[0] == 'w') ? 1 : -1;
 
         // Preskacemo prava rokade
@@ -1378,6 +1391,7 @@ void loadLastBoardState(char game[8][8], char* currentBoard, int* halfMoves, int
         *halfMoves = atoi(token);
     }
 }
+
 
 
 
@@ -1409,7 +1423,10 @@ char* storeCurrentBoardState(char game[8][8], int turn, char* castlingFEN, char*
         if (emptyCount != 0) {
             currentBoard[idx++] = '0' + emptyCount;
         }
-        currentBoard[idx++] = ' ';
+        if (row != 7)
+            currentBoard[idx++] = '/';
+        else
+            currentBoard[idx++] = ' ';
     }
 
     currentBoard[idx++] = (turn == 1) ? 'w' : 'b';
@@ -1444,39 +1461,46 @@ char* storeCurrentBoardState(char game[8][8], int turn, char* castlingFEN, char*
 
 
 
-bool checkThreefoldRepetition(const char* lastBoardState) {
+
+bool isThreefoldRepetition(const char* lastBoardState) {
     FILE* historyFile = fopen("game_history.txt", "r");
     if (historyFile == NULL) {
         perror("Could not open the file");
         return false;
     }
 
-    char line[100];
     int counter = 0;
+    char line[100];
+    char lastBoard[80], lastEnPassant[3], lastCastling[5];
+
+    char previousState[90];
+    strcpy(previousState, lastBoardState);
+
+    // Koristimo tokene da izdvojimo bitne dijelove iz lastBoardState
+    char* token = strtok(previousState, " ");
+    strcpy(lastBoard, token);
+    token = strtok(NULL, " ");
+    token = strtok(NULL, " ");
+    strcpy(lastCastling, token);
+    token = strtok(NULL, " ");
+    strcpy(lastEnPassant, token);
 
     while (fgets(line, sizeof(line), historyFile) != NULL) {
-        // Uzimamo samo dio koji opisuje ploču, ignoriramo halfMoves i turn
-        char* delimiterPos = strchr(line, ' ');
-        if (delimiterPos) {
-            *delimiterPos = '\0'; // Postavljamo kraj stringa
-        }
+        char boardFromFile[80], enPassantFromFile[3], castlingFromFile[5];
 
-        char* lastDelimiterPos = strchr(lastBoardState, ' ');
-        if (lastDelimiterPos) {
-            *lastDelimiterPos = '\0'; // Postavljamo kraj stringa
-        }
+        // Koristimo tokene da izdvojimo bitne dijelove iz svake linije
+        token = strtok(line, " ");
+        strcpy(boardFromFile, token);
+        token = strtok(NULL, " ");
+        token = strtok(NULL, " ");
+        strcpy(castlingFromFile, token);
+        token = strtok(NULL, " ");
+        strcpy(enPassantFromFile, token);
 
-        if (strcmp(line, lastBoardState) == 0) {
+        if (strcmp(lastBoard, boardFromFile) == 0 &&
+            strcmp(lastEnPassant, enPassantFromFile) == 0 &&
+            strcmp(lastCastling, castlingFromFile) == 0) {
             counter++;
-        }
-
-        // Vraćamo originalne vrijednosti
-        if (delimiterPos) {
-            *delimiterPos = ' ';
-        }
-
-        if (lastDelimiterPos) {
-            *lastDelimiterPos = ' ';
         }
     }
 
@@ -1484,3 +1508,4 @@ bool checkThreefoldRepetition(const char* lastBoardState) {
 
     return (counter >= 3);
 }
+
