@@ -28,7 +28,7 @@ typedef struct {
 
 void drawBoard(SDL_Renderer* renderer, char game[8][8]);
 void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Position newPos);
-int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check, char* currentBoard, int* halfMoves);
+int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check, char* currentBoard, int* halfMoves, int* stallingMoves);
 Position* getPossibleMoves(char game[8][8], int turn, Position startPos, int* moveCount, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove);
 void drawPiece(SDL_Renderer* renderer, char piece, int row, int col);
 void showPossibleMoves(SDL_Renderer* renderer, char game[8][8], Position possibleMoves[], int count);
@@ -55,7 +55,7 @@ char* isCastlingPossible(char piece, char game[8][8], bool hasKingMoved[2], bool
 void loadLastBoardState(char game[8][8], char* currentBoard, int* halfMoves, int* turn);
 char* storeCurrentBoardState(char game[8][8], int turn, char* castlingFEN, char* enPassantFEN, int halfMoves);
 bool isThreefoldRepetition(const char* lastBoardState);
-
+bool is50MoveRule(int stallingMoves);
 
 int main(int argc, char* argv[])
 {
@@ -74,6 +74,8 @@ int main(int argc, char* argv[])
     char currentBoard[90] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 0";
     int halfMoves = 0;
     int turn = 1;   // white = 1, black = -1
+
+    int stallingMoves = 0;
 
     bool isMoving = false;
     Position startPos = { 0, 0 };
@@ -122,7 +124,7 @@ int main(int argc, char* argv[])
     drawBoard(renderer, game);
 
     while (1) {
-        if (!handlePieceMovement(renderer, game, &turn, &isMoving, &startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove, check, currentBoard, &halfMoves)) {
+        if (!handlePieceMovement(renderer, game, &turn, &isMoving, &startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove, check, currentBoard, &halfMoves, &stallingMoves)) {
             break; // Ako korisnik želi zatvoriti prozor
         }
         SDL_Delay(100);
@@ -258,7 +260,7 @@ void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Posit
 
 
 
-int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check, char* currentBoard, int* halfMoves) {
+int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check, char* currentBoard, int* halfMoves, int* stallingMoves) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
 
@@ -280,8 +282,12 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
                 printf("%s", "STALE-MATE!\n");
                 drawGame();
             }
-            if (isThreefoldRepetition(currentBoard)) {
+            else if (isThreefoldRepetition(currentBoard)) {
                 printf("%s", "THREEFOLD REPETITION!\n");
+                drawGame();
+            }
+            else if (is50MoveRule(*stallingMoves)) {
+                printf("%s", "50-MOVE RULE!\n");
                 drawGame();
             }
         }
@@ -341,26 +347,33 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
 
                     if (validMove) {
                         resetBoardFields(renderer, game, *turn, *startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove);
-                        char enPassantFEN[3] = "-\0";
-                        char castlingFEN[5] = "-\0";
+                        char enPassantFEN[3] = "-";
+                        char castlingFEN[5] = "-";
                         char lastMovePiece = game[lastMove[1].row][lastMove[1].col];
+
+                        // update moves without pawn move or piece taken (50-Move rule)
+                        if (targetPiece == ' ' && tolower(selectedPiece) != 'p') {
+                            (*stallingMoves)++;
+                        }
+                        else {
+                            *stallingMoves = 0;
+                        }
                         
-                        char piece = game[startPos->row][startPos->col];
                         game[startPos->row][startPos->col] = ' ';
-                        game[clickedPos.row][clickedPos.col] = piece;
+                        game[clickedPos.row][clickedPos.col] = selectedPiece;
                         *isMoving = false; // Resetiranje statusa pomicanja
 
                         // promotion
-                        if (piece == 'p' && clickedPos.row == 7 || piece == 'P' && clickedPos.row == 0) {
+                        if (selectedPiece == 'p' && clickedPos.row == 7 || selectedPiece == 'P' && clickedPos.row == 0) {
                             promotion(renderer, game, clickedPos.row, clickedPos.col);
                             resetBoardCenter(renderer, game);
                         }
                         
                         // castling
-                        castling(renderer, game, piece, clickedPos, hasKingMoved, hasRookMoved);
+                        castling(renderer, game, selectedPiece, clickedPos, hasKingMoved, hasRookMoved);
 
                         // el passante
-                        if (isEnPassant(lastMove, *startPos, piece, game)) {
+                        if (isEnPassant(lastMove, *startPos, selectedPiece, game)) {
                             game[lastMove[1].row][lastMove[1].col] = ' ';
                             updateBoard(renderer, game, *startPos, lastMove[1]);    // micanje figure odnesene el passant potezom
                         }
@@ -374,9 +387,8 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
                         (*halfMoves)++;
 
 
-
                         // storing data
-                        if (piece == 'p' || piece == 'P' && abs(startPos->row - clickedPos.row) == 2) {
+                        if (selectedPiece == 'p' || selectedPiece == 'P' && abs(startPos->row - clickedPos.row) == 2) {
                             if (*turn == -1 && (clickedPos.col - 1 >= 0 && game[clickedPos.row][clickedPos.col - 1] == 'p' || 
                                 clickedPos.col + 1 < 8 && game[clickedPos.row][clickedPos.col + 1] == 'p'))
                                 sprintf(enPassantFEN, "%d%d", clickedPos.row + 1, clickedPos.col);
@@ -386,7 +398,7 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
                         }
 
                         Position currentMove[2] = { *startPos, clickedPos };
-                        strcpy(castlingFEN, isCastlingPossible(piece, game, hasKingMoved, hasRookMoved, currentMove));
+                        strcpy(castlingFEN, isCastlingPossible(selectedPiece, game, hasKingMoved, hasRookMoved, currentMove));
 
                         strcpy(currentBoard, storeCurrentBoardState(game, *turn, castlingFEN, enPassantFEN, *halfMoves));   // spremanje stanja prije samog poteza
 
@@ -1509,3 +1521,9 @@ bool isThreefoldRepetition(const char* lastBoardState) {
     return (counter >= 3);
 }
 
+
+bool is50MoveRule(int stallingMoves) {
+    if (stallingMoves == 100)
+        return true;
+    return false;
+}
