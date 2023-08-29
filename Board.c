@@ -14,55 +14,73 @@
 
 
 void drawBoard(SDL_Renderer* renderer, char game[8][8]) {
-    // Crtanje ploèe
+    int offset = 20;
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
-            SDL_Rect rect = { i * 80, j * 80, 80, 80 };
-            if ((i + j) % 2 == 0) {
-                SDL_SetRenderDrawColor(renderer, 139, 69, 19, 255); // Dark Brown
-            }
-            else {
-                SDL_SetRenderDrawColor(renderer, 233, 194, 166, 255); // Light Brown (Yellowish)
-            }
+            SDL_Rect rect = { i * 80 + offset, j * 80 + offset, 80, 80 };
+            SDL_SetRenderDrawColor(renderer, (i + j) % 2 == 0 ? 139 : 233, (i + j) % 2 == 0 ? 69 : 194, (i + j) % 2 == 0 ? 19 : 166, 255);
             SDL_RenderFillRect(renderer, &rect);
 
-            // Provjera da li je figura na trenutnom polju i njen prikaz
             char piece = game[j][i];
             if (piece != ' ') {
                 char color[6];
-                if (islower(piece)) {
-                    strcpy(color, "black");
-                }
-                else {
-                    strcpy(color, "white");
-                }
-                piece = tolower(piece);
-
+                strcpy(color, islower(piece) ? "black" : "white");
                 char pieceName[7];
-                switch (piece) {
-                case 'r': strcpy(pieceName, "rook"); break;
-                case 'n': strcpy(pieceName, "knight"); break;
-                case 'b': strcpy(pieceName, "bishop"); break;
-                case 'q': strcpy(pieceName, "queen"); break;
-                case 'k': strcpy(pieceName, "king"); break;
-                case 'p': strcpy(pieceName, "pawn"); break;
-                default: strcpy(pieceName, ""); break;
-                }
-
+                sprintf(pieceName, "%s", (char*[]) { "rook", "knight", "bishop", "queen", "king", "pawn" }[strchr("rnbqkp", tolower(piece)) - "rnbqkp"]);
                 char path[50];
                 sprintf(path, "img/%s_%s.png", pieceName, color);
                 SDL_Surface* surface = IMG_Load(path);
                 SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
                 SDL_FreeSurface(surface);
-
-                SDL_Rect destRect = { i * 80 + 20, j * 80 + 10, 40, 60 }; // Pozicija i dimenzija gdje æe se figura renderirati
+                SDL_Rect destRect = { i * 80 + offset + 20, j * 80 + offset + 10, 40, 60 };
                 SDL_RenderCopy(renderer, texture, NULL, &destRect);
                 SDL_DestroyTexture(texture);
             }
         }
     }
+
+    // Drawing the dark gray border
+    SDL_SetRenderDrawColor(renderer, 105, 105, 105, 255); // Dark Gray
+    SDL_Rect borderRects[4] = {
+        { 0, 0, 8 * 80 + 2 * offset, offset }, // Top
+        { 0, 0, offset, 8 * 80 + 2 * offset }, // Left
+        { 8 * 80 + offset, 0, offset, 8 * 80 + 2 * offset }, // Right
+        { 0, 8 * 80 + offset, 8 * 80 + 2 * offset, offset }  // Bottom
+    };
+    SDL_RenderFillRects(renderer, borderRects, 4);
+
+    for (int i = 1; i <= 8; i++) {
+        char path[50];
+        sprintf(path, "img/number_%d.png", i);
+        SDL_Surface* surface = IMG_Load(path);
+        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_FreeSurface(surface);
+        SDL_Rect destRectLeft = { 2, (8 - i) * 80 + offset + 30, 16, 16 };
+        SDL_Rect destRectRight = { 8 * 80 + offset + 2, (8 - i) * 80 + offset + 30, 16, 16 };
+        SDL_RenderCopy(renderer, texture, NULL, &destRectLeft);
+        SDL_RenderCopy(renderer, texture, NULL, &destRectRight);
+        SDL_DestroyTexture(texture);
+    }
+
+    char letters[] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' };
+    for (int i = 0; i < 8; i++) {
+        char path[50];
+        sprintf(path, "img/letter_%c.png", letters[i]);
+        SDL_Surface* surface = IMG_Load(path);
+        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_FreeSurface(surface);
+        SDL_Rect destRectTop = { i * 80 + offset + 32, offset - 18, 16, 16 };
+        SDL_Rect destRectBottom = { i * 80 + offset + 32, 8 * 80 + offset, 16, 16 };
+        SDL_RenderCopy(renderer, texture, NULL, &destRectTop);
+        SDL_RenderCopy(renderer, texture, NULL, &destRectBottom);
+        SDL_DestroyTexture(texture);
+    }
+
     SDL_RenderPresent(renderer);
 }
+
+
+
 
 
 void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Position newPos) {

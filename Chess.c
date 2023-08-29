@@ -20,10 +20,12 @@
 #include "Movement.h"
 #include "Game.h"
 
-#include "Pawn.c"
 
-#define SCREEN_WIDTH 640
-#define SCREEN_HEIGHT 640
+
+#define SCREEN_WIDTH 680
+#define SCREEN_HEIGHT 680
+#define BOARD_WIDTH 640
+#define BOARD_HEIGHT 640
 #define FIELD_WIDHT 80
 #define FIELD_HEIGHT 80
 
@@ -74,7 +76,7 @@ int main(int argc, char* argv[])
     SDL_Window* window = SDL_CreateWindow("Chess Board",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
-        640, 640,
+        SCREEN_WIDTH, SCREEN_HEIGHT,
         SDL_WINDOW_SHOWN);
     if (window == NULL) {
         printf("Error creating window: %s\n", SDL_GetError());
@@ -129,7 +131,7 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
             // checkmate
             if (isCheckmate(game, *turn, hasKingMoved, hasRookMoved, attackedFields, lastMove)) {
                 printf("%s", "CHECK-MATE!\n");
-                endGame();
+                endGame(renderer);
             }
         }
         else {
@@ -138,15 +140,15 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
             // stalemate
             if (isStalemate(game, *turn, hasKingMoved, hasRookMoved, attackedFields, lastMove)) {
                 printf("%s", "STALE-MATE!\n");
-                drawGame();
+                drawGame(renderer);
             }
             else if (isThreefoldRepetition(currentBoard)) {
                 printf("%s", "THREEFOLD REPETITION!\n");
-                drawGame();
+                drawGame(renderer);
             }
             else if (is50MoveRule(*stallingMoves)) {
                 printf("%s", "50-MOVE RULE!\n");
-                drawGame();
+                drawGame(renderer);
             }
         }
 

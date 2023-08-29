@@ -85,8 +85,8 @@ void promotion(SDL_Renderer* renderer, char game[8][8], int row, int col) {
     // Koordinate i velièina gumba za promociju
     int buttonWidth = 40;
     int buttonHeight = 60;
-    int startX = (SCREEN_WIDTH - FIELD_WIDHT * 4) / 2;
-    int startY = (SCREEN_HEIGHT - FIELD_HEIGHT) / 2;
+    int startX = (BOARD_WIDTH - FIELD_WIDHT * 4) / 2;
+    int startY = (BOARD_HEIGHT - FIELD_HEIGHT) / 2;
 
     // Okvir oko prozora
     SDL_Rect borderRect = { startX - 10, startY - 10, FIELD_WIDHT * 4 + 20, FIELD_HEIGHT + 20 };

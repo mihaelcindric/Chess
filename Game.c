@@ -167,10 +167,54 @@ bool is50MoveRule(int stallingMoves) {
 }
 
 
-void endGame() {
-    // TODO
+void endGame(SDL_Renderer* renderer) {
+    int startX = (BOARD_WIDTH - TEXT_WIDHT) / 2 - 20;
+    int startY = (BOARD_HEIGHT - TEXT_HEIGHT) / 2 - 10;
+
+    SDL_Rect borderRect = { startX - 10, startY - 10, TEXT_WIDHT + 40 + 20, TEXT_HEIGHT + 20 + 20 };
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Black border
+    SDL_RenderFillRect(renderer, &borderRect);
+
+    SDL_Rect backgroundRect = { startX, startY, TEXT_WIDHT + 40, TEXT_HEIGHT + 20 };
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // White background
+    SDL_RenderFillRect(renderer, &backgroundRect);
+
+    SDL_Rect rect = { startX + 20, startY + 10, TEXT_WIDHT, TEXT_HEIGHT };
+
+    char path[50];
+    strcpy(path, "img/checkmate.png");
+    SDL_Surface* surface = IMG_Load(path);
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_FreeSurface(surface);
+
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    SDL_RenderPresent(renderer);
 }
 
-void drawGame() {
-    // TODO
+void drawGame(SDL_Renderer* renderer) {
+    int startX = (BOARD_WIDTH - TEXT_WIDHT) / 2 - 20;
+    int startY = (BOARD_HEIGHT - TEXT_HEIGHT) / 2 - 10;
+
+    SDL_Rect borderRect = { startX - 10, startY - 10, TEXT_WIDHT + 40 + 20, TEXT_HEIGHT + 20 + 20 };
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Black border
+    SDL_RenderFillRect(renderer, &borderRect);
+
+    SDL_Rect backgroundRect = { startX, startY, TEXT_WIDHT + 40, TEXT_HEIGHT + 20 };
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // White background
+    SDL_RenderFillRect(renderer, &backgroundRect);
+
+    SDL_Rect rect = { startX + 20, startY + 10, TEXT_WIDHT, TEXT_HEIGHT };
+
+    char path[50];
+    strcpy(path, "img/draw.png");
+    SDL_Surface* surface = IMG_Load(path);
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_FreeSurface(surface);
+
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    SDL_RenderPresent(renderer);
 }
