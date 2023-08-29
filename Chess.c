@@ -365,6 +365,8 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
                         *turn *= -1;    // swiching the turn
                         (*halfMoves)++;
 
+
+
                         // storing data
                         if (piece == 'p' || piece == 'P' && abs(startPos->row - clickedPos.row) == 2) {
                             if (*turn == -1 && (clickedPos.col - 1 >= 0 && game[clickedPos.row][clickedPos.col - 1] == 'p' || 
@@ -1423,14 +1425,15 @@ char* storeCurrentBoardState(char game[8][8], int turn, char* castlingFEN, char*
 
     currentBoard[idx++] = ' ';
 
-    char halfMoveString[10];
-    snprintf(halfMoveString, 10, "%d", halfMoves);
+    char halfMoveString[5];
+    snprintf(halfMoveString, 5, "%d", halfMoves);
     strcpy(currentBoard + idx, halfMoveString);
+    idx += strlen(halfMoveString);
 
     currentBoard[idx++] = ' ';
 
-    char fullMoveString[10];
-    snprintf(fullMoveString, 10, "%d", halfMoves / 2);
+    char fullMoveString[5];
+    snprintf(fullMoveString, 5, "%d", halfMoves / 2);
     strcpy(currentBoard + idx, fullMoveString);
 
     fprintf(historyFile, "%s\n", currentBoard);
