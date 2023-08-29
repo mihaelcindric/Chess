@@ -51,7 +51,7 @@ void filterLegalMoves(char game[8][8], Position* moves, int* moveCount, Position
 void endGame();
 void drawGame();
 bool isEnPassant(Position* lastMove, Position startPos, char piece, char game[8][8]);
-char* isCastlingPossible(char piece, char game[8][8], bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8]);
+char* isCastlingPossible(char piece, char game[8][8], bool hasKingMoved[2], bool hasRookMoved[4], Position* lastMove);
 void loadLastBoardState(char game[8][8], char* currentBoard, int* halfMoves, int* turn);
 char* storeCurrentBoardState(char game[8][8], int turn, char* castlingFEN, char* enPassantFEN, int halfMoves);
 
@@ -369,7 +369,8 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
                                 sprintf(enPassantFEN, "%d%d", clickedPos.row + 1, clickedPos.col);
                         }
 
-                        strcpy(castlingFEN, isCastlingPossible(piece, game, hasKingMoved, hasRookMoved, attackedFields));
+                        Position currentMove[2] = { *startPos, clickedPos };
+                        strcpy(castlingFEN, isCastlingPossible(piece, game, hasKingMoved, hasRookMoved, currentMove));
                         
 
                         strcpy(currentBoard, storeCurrentBoardState(game, *turn, castlingFEN, enPassantFEN, *halfMoves));   // spremanje stanja prije samog poteza
@@ -1261,7 +1262,7 @@ bool isEnPassant(Position* lastMove, Position startPos, char piece, char game[8]
 
 
 
-char* isCastlingPossible(char piece, char game[8][8], bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8]) {
+char* isCastlingPossible(char piece, char game[8][8], bool hasKingMoved[2], bool hasRookMoved[4], Position* lastMove) {
     static bool possibleCastling[4]; // static kako bi se sačuvala vrijednost između poziva
 
     // Resetiraj niz na false
@@ -1269,8 +1270,23 @@ char* isCastlingPossible(char piece, char game[8][8], bool hasKingMoved[2], bool
         possibleCastling[i] = false;
     }
 
-    
+    int whiteAttackedFields[8][8] = { 0 };
+    int blackAttackedFields[8][8] = { 0 };
+    updateAttackedFields(game, whiteAttackedFields, 1, hasKingMoved, hasRookMoved, lastMove);
+    updateAttackedFields(game, blackAttackedFields, -1, hasKingMoved, hasRookMoved, lastMove);
+
     for (int i = 0; i < 2; i++) {
+        int attackedFields[8][8] = { 0 };
+
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                if (i == 0)
+                    attackedFields[row][col] = blackAttackedFields[row][col];
+                else
+                    attackedFields[row][col] = whiteAttackedFields[row][col];
+            }
+        }
+
         if (!hasKingMoved[i]) {
             // Provjera lijeva (damska) rokada
             if (!hasRookMoved[i * 2] && game[i * 7][1] == ' ' && game[i * 7][2] == ' ' && game[i * 7][3] == ' ' &&
