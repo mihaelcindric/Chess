@@ -1331,7 +1331,7 @@ void loadLastBoardState(char game[8][8], char* currentBoard, int* halfMoves, int
         // Postavljanje tura
         *turn = (token[0] == 'w') ? 1 : -1;
 
-        // Preskačemo elpassant (pošto nije potrebno za sada)
+        // Preskačemo elpassant
         token = strtok(NULL, " ");
 
         // Postavljanje halfMoves
@@ -1389,4 +1389,47 @@ char* storeCurrentBoardState(char game[8][8], int turn, char* elpassant, int hal
     fclose(historyFile);
 
     return currentBoard;
+}
+
+
+
+bool checkThreefoldRepetition(const char* lastBoardState) {
+    FILE* historyFile = fopen("game_history.txt", "r");
+    if (historyFile == NULL) {
+        perror("Could not open the file");
+        return false;
+    }
+
+    char line[100];
+    int counter = 0;
+
+    while (fgets(line, sizeof(line), historyFile) != NULL) {
+        // Uzimamo samo dio koji opisuje ploču, ignoriramo halfMoves i turn
+        char* delimiterPos = strchr(line, ' ');
+        if (delimiterPos) {
+            *delimiterPos = '\0'; // Postavljamo kraj stringa
+        }
+
+        char* lastDelimiterPos = strchr(lastBoardState, ' ');
+        if (lastDelimiterPos) {
+            *lastDelimiterPos = '\0'; // Postavljamo kraj stringa
+        }
+
+        if (strcmp(line, lastBoardState) == 0) {
+            counter++;
+        }
+
+        // Vraćamo originalne vrijednosti
+        if (delimiterPos) {
+            *delimiterPos = ' ';
+        }
+
+        if (lastDelimiterPos) {
+            *lastDelimiterPos = ' ';
+        }
+    }
+
+    fclose(historyFile);
+
+    return (counter >= 3);
 }
