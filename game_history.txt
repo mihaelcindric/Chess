@@ -1,6 +1,17 @@
-rnbqkbnr pppppppp 8 8 8 8 PPPPPPPP RNBQKBNR w - 0
-rnbqkbnr pppppppp 8 8 4P3 8 PPPP1PPP RNBQKBNR b 54 1
-rnbqkbnr ppp1pppp 8 3p4 4P3 8 PPPP1PPP RNBQKBNR w 23 2
-rnbqkbnr ppp1pppp 8 3pP3 8 8 PPPP1PPP RNBQKBNR b - 3
-rnbqkbnr ppp1p1pp 8 3pPp2 8 8 PPPP1PPP RNBQKBNR w 25 4
-rnbqkbnr ppp1p1pp 5P2 3p4 8 8 PPPP1PPP RNBQKBNR b - 5
+rnbqkbnr pppppppp 8 8 8 8 PPPPPPPP RNBQKBNR w - -  0
+rnbqkbnr pppppppp 8 8 5P2 8 PPPPP1PP RNBQKBNR b - -  0
+rnbqkbnr pp1ppppp 8 2p5 5P2 8 PPPPP1PP RNBQKBNR w - -  1
+rnbqkbnr pp1ppppp 8 2p5 5PP1 8 PPPPP2P RNBQKBNR b - -  1
+rnbqkbnr p2ppppp 8 1pp5 5PP1 8 PPPPP2P RNBQKBNR w - -  2
+rnbqkbnr p2ppppp 8 1pp5 5PP1 5N2 PPPPP2P RNBQKB1R b - -  2
+r1bqkbnr p2ppppp 2n5 1pp5 5PP1 5N2 PPPPP2P RNBQKB1R w - -  3
+r1bqkbnr p2ppppp 2n5 1pp5 5PP1 5N1B PPPPP2P RNBQK2R b - -  3
+r1b1kbnr p2ppppp 1qn5 1pp5 5PP1 5N1B PPPPP2P RNBQK2R w - -  4
+r1b1kbnr p2ppppp 1qn5 1pp5 5PP1 2P2N1B PP1PP2P RNBQK2R b K -  4
+r3kbnr pb1ppppp 1qn5 1pp5 5PP1 2P2N1B PP1PP2P RNBQK2R w - -  5
+r3kbnr pb1ppppp 1qn5 1pp5 5PP1 1PP2N1B P2PP2P RNBQK2R b K -  5
+r3kbnr pb1p1ppp 1qn1p3 1pp5 5PP1 1PP2N1B P2PP2P RNBQK2R w q -  6
+r3kbnr pb1p1ppp 1qn1p3 1pp5 5PP1 BPP2N1B P2PP2P RN1QK2R b K -  6
+r3kbnr pb3ppp 1qnpp3 1pp5 5PP1 BPP2N1B P2PP2P RN1QK2R w q -  7
+r3kbnr pb3ppp 1qnpp3 1pp5 5PP1 BPPP1N1B P3P2P RN1QK2R b K -  7
+2kr1bnr pb3ppp 1qnpp3 1pp5 5PP1 BPPP1N1B P3P2P RN1QK2R w - -  4
