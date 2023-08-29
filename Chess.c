@@ -358,27 +358,28 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
                         }
 
 
+                        // update last/previous move
+                        lastMove[0] = *startPos;
+                        lastMove[1] = clickedPos;
+
                         *turn *= -1;    // swiching the turn
                         (*halfMoves)++;
 
                         // storing data
-                        if (piece == 'p' || piece == 'P' && abs(startPos->row - clickedPos.row) == 2 && abs(lastMove[1].col - startPos->col) == 1) {
-                            if (*turn == 1 && lastMovePiece == 'P' && lastMove[1].row == startPos->row)
-                                sprintf(enPassantFEN, "%d%d", clickedPos.row - 1, clickedPos.col);
-                            else if (lastMovePiece == 'p' && lastMove[1].row == startPos->row)
+                        if (piece == 'p' || piece == 'P' && abs(startPos->row - clickedPos.row) == 2) {
+                            if (*turn == -1 && (clickedPos.col - 1 >= 0 && game[clickedPos.row][clickedPos.col - 1] == 'p' || 
+                                clickedPos.col + 1 < 8 && game[clickedPos.row][clickedPos.col + 1] == 'p'))
                                 sprintf(enPassantFEN, "%d%d", clickedPos.row + 1, clickedPos.col);
+                            else if (*turn == 1 && (clickedPos.col - 1 >= 0 && game[clickedPos.row][clickedPos.col - 1] == 'P' ||
+                                clickedPos.col + 1 < 8 && game[clickedPos.row][clickedPos.col + 1] == 'P'))
+                                sprintf(enPassantFEN, "%d%d", clickedPos.row - 1, clickedPos.col);
                         }
 
                         Position currentMove[2] = { *startPos, clickedPos };
                         strcpy(castlingFEN, isCastlingPossible(piece, game, hasKingMoved, hasRookMoved, currentMove));
-                        
 
                         strcpy(currentBoard, storeCurrentBoardState(game, *turn, castlingFEN, enPassantFEN, *halfMoves));   // spremanje stanja prije samog poteza
 
-                                
-                        // update last/previous move
-                        lastMove[0] = *startPos;
-                        lastMove[1] = clickedPos;
 
 
                         updateBoard(renderer, game, *startPos, clickedPos); // Poziv updateBoard funkcije
