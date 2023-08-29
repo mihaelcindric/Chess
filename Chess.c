@@ -381,8 +381,7 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
 
 
                         updateBoard(renderer, game, *startPos, clickedPos); // Poziv updateBoard funkcije
-                        updateAttackedFields(game, attackedFields, *turn, hasKingMoved, hasRookMoved, lastMove);  // Updating currently attacked fields
-
+                        updateAttackedFields(game, attackedFields, *turn * -1, hasKingMoved, hasRookMoved, lastMove);  // Updating currently attacked fields
                     }
                     else {
                         // Ako potez nije valjan, resetiraj status pomicanja
@@ -603,11 +602,12 @@ Position* getPawnMoves(char game[8][8], Position startPos, int* count, Position*
         // Provjera za "en passant"
         if (isEnPassant(lastMove, startPos, game[startPos.row][startPos.col], game)) {
             int direction = islower(game[startPos.row][startPos.col]) ? 1 : -1;
-            if (game[startPos.row + direction][startPos.col] == ' ') {
+            //if (startPos.col - 1 >= 0 && game[startPos.row + direction][startPos.col - 1] == ' ' || 
+            //    startPos.col + 1 < 8 && game[startPos.row + direction][startPos.col + 1] == ' ') {
                 moves[*count].row = startPos.row + direction;
                 moves[*count].col = lastMove[1].col;
                 (*count)++;
-            }
+            //}
         }
     }
 
@@ -1249,8 +1249,7 @@ void filterLegalMoves(char game[8][8], Position* moves, int* moveCount, Position
 
 bool isEnPassant(Position* lastMove, Position startPos, char piece, char game[8][8]) {
     if ((piece == 'p' || piece == 'P') && abs(lastMove[1].col - startPos.col) == 1) {
-        if (lastMove[1].row == startPos.row && (lastMove[1].col == startPos.col - 1 || lastMove[1].col == startPos.col + 1)
-            && abs(lastMove[0].row - lastMove[1].row) == 2) {
+        if (lastMove[1].row == startPos.row && abs(lastMove[0].row - lastMove[1].row) == 2) {
             if ((piece == 'p' && game[lastMove[1].row][lastMove[1].col] == 'P') ||
                 (piece == 'P' && game[lastMove[1].row][lastMove[1].col] == 'p')) {
                 return true;
