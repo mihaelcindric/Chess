@@ -162,8 +162,7 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
 
             int x, y;
             SDL_GetMouseState(&x, &y);
-            Position clickedPos = { y / 80, x / 80 };
-
+            Position clickedPos = { (y - 20) / 80, (x - 20) / 80 };
 
             if (!(*isMoving)) {
                 if (*turn == 1 && isupper(game[clickedPos.row][clickedPos.col]) || *turn == -1 && islower(game[clickedPos.row][clickedPos.col])) { // Ako je na polju figura

@@ -85,12 +85,13 @@ void drawBoard(SDL_Renderer* renderer, char game[8][8]) {
 
 void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Position newPos) {
     Position positions[2] = { oldPos, newPos };
+    int offset = 20;
 
     for (int pos = 0; pos < 2; pos++) {
         int i = positions[pos].col;
         int j = positions[pos].row;
 
-        SDL_Rect rect = { i * 80, j * 80, 80, 80 };
+        SDL_Rect rect = { i * 80 + offset, j * 80 + offset, 80, 80 };
         if ((i + j) % 2 == 0) {
             SDL_SetRenderDrawColor(renderer, 139, 69, 19, 255); // Dark Brown
         }
@@ -127,7 +128,7 @@ void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Posit
             SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
             SDL_FreeSurface(surface);
 
-            SDL_Rect destRect = { i * 80 + 20, j * 80 + 10, 40, 60 };
+            SDL_Rect destRect = { i * 80 + 20 + offset, j * 80 + 10 + offset, 40, 60 };
             SDL_RenderCopy(renderer, texture, NULL, &destRect);
             SDL_DestroyTexture(texture);
 
@@ -138,6 +139,8 @@ void updateBoard(SDL_Renderer* renderer, char game[8][8], Position oldPos, Posit
 
 
 void drawPiece(SDL_Renderer* renderer, char piece, int row, int col) {
+    int offset = 20;
+
     char color[6];
     if (islower(piece)) {
         strcpy(color, "black");
@@ -164,18 +167,20 @@ void drawPiece(SDL_Renderer* renderer, char piece, int row, int col) {
     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
     SDL_FreeSurface(surface);
 
-    SDL_Rect destRect = { col * 80 + 20, row * 80 + 10, 40, 60 };
+    SDL_Rect destRect = { col * 80 + 20 + offset, row * 80 + 10 + offset, 40, 60 };
     SDL_RenderCopy(renderer, texture, NULL, &destRect);
     SDL_DestroyTexture(texture);
 }
 
 
 void showPossibleMoves(SDL_Renderer* renderer, char game[8][8], Position possibleMoves[], int count) {
+    int offset = 20;
+
     for (int i = 0; i < count; i++) {
         int row = possibleMoves[i].row;
         int col = possibleMoves[i].col;
 
-        SDL_Rect rect = { col * 80, row * 80, 80, 80 };
+        SDL_Rect rect = { col * 80 + offset, row * 80 + offset, 80, 80 };
         SDL_SetRenderDrawColor(renderer, 204, 102, 102, 255); // Crvenkasta boja za moguæe poteze
         SDL_RenderFillRect(renderer, &rect);
 
@@ -190,10 +195,12 @@ void showPossibleMoves(SDL_Renderer* renderer, char game[8][8], Position possibl
 
 
 void showCurrentlyChosen(SDL_Renderer* renderer, char game[8][8], Position chosenPosition) {
+    int offset = 20;
+
     int row = chosenPosition.row;
     int col = chosenPosition.col;
 
-    SDL_Rect rect = { col * 80, row * 80, 80, 80 };
+    SDL_Rect rect = { col * 80 + offset, row * 80 + offset, 80, 80 };
     SDL_SetRenderDrawColor(renderer, 255, 51, 51, 255); // Intenzivnija crvenkasta boja za trenutno odabrano
     SDL_RenderFillRect(renderer, &rect);
 
@@ -205,6 +212,7 @@ void showCurrentlyChosen(SDL_Renderer* renderer, char game[8][8], Position chose
 
 
 void resetBoardFields(SDL_Renderer* renderer, char game[8][8], int turn, Position startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove) {
+    int offset = 20;
     int moveCount;
     Position* positions = getPossibleMoves(game, turn, startPos, &moveCount, hasKingMoved, hasRookMoved, attackedFields, lastMove);
 
@@ -216,7 +224,7 @@ void resetBoardFields(SDL_Renderer* renderer, char game[8][8], int turn, Positio
         SDL_SetRenderDrawColor(renderer, 233, 194, 166, 255); // Light Brown (Yellowish)
     }
 
-    SDL_Rect rect = { startPos.col * 80, startPos.row * 80, 80, 80 };
+    SDL_Rect rect = { startPos.col * 80 + offset, startPos.row * 80 + offset, 80, 80 };
     SDL_RenderFillRect(renderer, &rect);
 
     char piece = game[startPos.row][startPos.col];
@@ -237,7 +245,7 @@ void resetBoardFields(SDL_Renderer* renderer, char game[8][8], int turn, Positio
             SDL_SetRenderDrawColor(renderer, 233, 194, 166, 255); // Light Brown (Yellowish)
         }
 
-        SDL_Rect rect = { col * 80, row * 80, 80, 80 };
+        SDL_Rect rect = { col * 80 + offset, row * 80 + offset, 80, 80 };
         SDL_RenderFillRect(renderer, &rect);
 
         // Iscrtaj figuricu ponovo ako postoji na tom polju
