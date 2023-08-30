@@ -462,9 +462,9 @@ void showGameOptions(SDL_Renderer* renderer, char game[8][8], char* currentBoard
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     SDL_RenderFillRect(renderer, &mainBackground);
 
-    char buttonImages[2][30];
-    sprintf(buttonImages[0], "img/%s.png", "circle_large");
-    sprintf(buttonImages[1], "img/%s.png", "circle_small");
+    char buttonImages[2][30] = {"img/resume.png", "img/restart_big.png"};
+    //sprintf(buttonImages[0], "img/%s.png", "restart");
+    //sprintf(buttonImages[1], "img/%s.png", "circle_small");
 
     SDL_Rect buttons[2];
     SDL_Rect buttonBorders[2]; // Dodali smo ovo za crne okvire
@@ -612,7 +612,7 @@ void showCapturedPiecesAndResetButton(SDL_Renderer* renderer, char captured[2][1
     SDL_RenderFillRect(renderer, &buttonRect);
 
     // Učitaj i postavi sliku za gumb
-    SDL_Surface* circleSurface = IMG_Load("img/circle_small.png");
+    SDL_Surface* circleSurface = IMG_Load("img/restart_small.png");
     SDL_Texture* circleTexture = SDL_CreateTextureFromSurface(renderer, circleSurface);
     SDL_FreeSurface(circleSurface);
 
