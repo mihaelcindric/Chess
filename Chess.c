@@ -31,8 +31,9 @@
 
 
 int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check, char* currentBoard, int* halfMoves, int* stallingMoves);
-void loadLastBoardState(char game[8][8], char* currentBoard, int* halfMoves, int* turn);
+void loadLastBoardState(char game[8][8], char* currentBoard, int* halfMoves, int* turn); char* storeCurrentBoardState(char game[8][8], int turn, char* castlingFEN, char* enPassantFEN, int halfMoves);
 char* storeCurrentBoardState(char game[8][8], int turn, char* castlingFEN, char* enPassantFEN, int halfMoves);
+void showGameOptions(SDL_Renderer* renderer, char game[8][8], char* currentBoard, int* halfMoves, int* turn);
 
 
 int main(int argc, char* argv[])
@@ -93,12 +94,8 @@ int main(int argc, char* argv[])
     }
 
 
-    loadLastBoardState(game, currentBoard, &halfMoves, &turn);
-
-    if (halfMoves == 0) {   // new game
-        storeCurrentBoardState(game, turn, "-", "-", halfMoves);
-    }
-
+    drawBoard(renderer, game);
+    showGameOptions(renderer, game, currentBoard, &halfMoves, &turn);
     drawBoard(renderer, game);
 
     while (1) {
@@ -262,7 +259,7 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
                         Position currentMove[2] = { *startPos, clickedPos };
                         strcpy(castlingFEN, isCastlingPossible(selectedPiece, game, hasKingMoved, hasRookMoved, currentMove));
 
-                        strcpy(currentBoard, storeCurrentBoardState(game, *turn, castlingFEN, enPassantFEN, *halfMoves));   // spremanje stanja prije samog poteza
+                        strcpy(currentBoard, storeCurrentBoardState(game, *turn, castlingFEN, enPassantFEN, *halfMoves));   // spremanje stanja nakon poteza
 
 
 
@@ -400,3 +397,96 @@ char* storeCurrentBoardState(char game[8][8], int turn, char* castlingFEN, char*
 
     return currentBoard;
 }
+
+
+void showGameOptions(SDL_Renderer* renderer, char game[8][8], char* currentBoard, int* halfMoves, int* turn) {
+    FILE* file = fopen("data/game_history.txt", "r");
+
+    if (file == NULL) {
+        remove("data/game_history.txt");
+        storeCurrentBoardState(game, *turn, "-", "-", *halfMoves);
+        return;
+    }
+    fclose(file);
+
+    int buttonWidth = 150;
+    int buttonHeight = 80;
+    int gap = 30; // Dodali smo varijablu za razmak između gumba
+    int totalWidth = (buttonWidth * 2) + gap;
+    int startX = (SCREEN_WIDTH - totalWidth) / 2;
+    int startY = (SCREEN_HEIGHT - buttonHeight) / 2;
+
+    SDL_Rect mainBorder = { startX - 20, startY - 20, totalWidth + 40, buttonHeight + 40 };
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderFillRect(renderer, &mainBorder);
+
+    SDL_Rect mainBackground = { startX - 10, startY - 10, totalWidth + 20, buttonHeight + 20 };
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_RenderFillRect(renderer, &mainBackground);
+
+    char buttonImages[2][30];
+    sprintf(buttonImages[0], "img/%s.png", "number_1");
+    sprintf(buttonImages[1], "img/%s.png", "letter_g");
+
+    SDL_Rect buttons[2];
+    SDL_Rect buttonBorders[2]; // Dodali smo ovo za crne okvire
+
+    for (int i = 0; i < 2; i++) {
+        buttons[i].x = startX + i * (buttonWidth + gap);
+        buttons[i].y = startY;
+        buttons[i].w = buttonWidth;
+        buttons[i].h = buttonHeight;
+
+        // Crni okviri
+        buttonBorders[i] = buttons[i];
+        buttonBorders[i].x -= 5;
+        buttonBorders[i].y -= 5;
+        buttonBorders[i].w += 10;
+        buttonBorders[i].h += 10;
+
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderFillRect(renderer, &buttonBorders[i]); // Crta crne okvire
+
+        SDL_Surface* surface = IMG_Load(buttonImages[i]);
+        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_FreeSurface(surface);
+
+        SDL_RenderCopy(renderer, texture, NULL, &buttons[i]);
+        SDL_DestroyTexture(texture);
+    }
+
+    SDL_RenderPresent(renderer);
+
+    SDL_Event e;
+    while (1) {
+        while (SDL_PollEvent(&e) != 0) {
+            if (e.type == SDL_QUIT) {
+                return;
+            }
+
+            if (e.type == SDL_MOUSEBUTTONDOWN) {
+                int x, y;
+                SDL_GetMouseState(&x, &y);
+
+                for (int i = 0; i < 2; i++) {
+                    if (x >= buttons[i].x && x <= buttons[i].x + buttonWidth &&
+                        y >= buttons[i].y && y <= buttons[i].y + buttonHeight) {
+
+                        if (i == 0) {
+                            loadLastBoardState(game, currentBoard, halfMoves, turn);
+                            return;
+                        }
+                        else if (i == 1) {
+                            remove("data/game_history.txt");
+                            storeCurrentBoardState(game, *turn, "-", "-", *halfMoves);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+
