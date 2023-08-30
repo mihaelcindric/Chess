@@ -30,11 +30,12 @@
 #define FIELD_HEIGHT 80
 
 
-int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check, char* currentBoard, int* halfMoves, int* stallingMoves);
+int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check, char* currentBoard, int* halfMoves, int* stallingMoves, char captured[2][15]);
 void loadLastBoardState(char game[8][8], char* currentBoard, int* halfMoves, int* turn); char* storeCurrentBoardState(char game[8][8], int turn, char* castlingFEN, char* enPassantFEN, int halfMoves);
 char* storeCurrentBoardState(char game[8][8], int turn, char* castlingFEN, char* enPassantFEN, int halfMoves);
 void showGameOptions(SDL_Renderer* renderer, char game[8][8], char* currentBoard, int* halfMoves, int* turn);
-
+void showCapturedPiecesAndResetButton(SDL_Renderer* renderer, char captured[2][15]);
+void updateCapturedPieces(char piece, int turn, char captured[2][15]);
 
 int main(int argc, char* argv[])
 {
@@ -67,6 +68,12 @@ int main(int argc, char* argv[])
     bool check = false;
 
     int attackedFields[8][8] = { 0 };
+    char captured[2][15];
+    for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 15; j++) {
+            captured[i][j] = ' ';
+        }
+    }
 
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -77,7 +84,7 @@ int main(int argc, char* argv[])
     SDL_Window* window = SDL_CreateWindow("Chess Board",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
-        SCREEN_WIDTH, SCREEN_HEIGHT,
+        SCREEN_WIDTH + 130, SCREEN_HEIGHT,
         SDL_WINDOW_SHOWN);
     if (window == NULL) {
         printf("Error creating window: %s\n", SDL_GetError());
@@ -95,11 +102,12 @@ int main(int argc, char* argv[])
 
 
     drawBoard(renderer, game);
+    showCapturedPiecesAndResetButton(renderer, captured);
     showGameOptions(renderer, game, currentBoard, &halfMoves, &turn);
     drawBoard(renderer, game);
 
     while (1) {
-        if (!handlePieceMovement(renderer, game, &turn, &isMoving, &startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove, check, currentBoard, &halfMoves, &stallingMoves)) {
+        if (!handlePieceMovement(renderer, game, &turn, &isMoving, &startPos, hasKingMoved, hasRookMoved, attackedFields, lastMove, check, currentBoard, &halfMoves, &stallingMoves, captured)) {
             break; // Ako korisnik želi zatvoriti prozor
         }
         SDL_Delay(100);
@@ -117,7 +125,7 @@ int main(int argc, char* argv[])
 }
 
 
-int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check, char* currentBoard, int* halfMoves, int* stallingMoves) {
+int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool* isMoving, Position* startPos, bool hasKingMoved[2], bool hasRookMoved[4], int attackedFields[8][8], Position* lastMove, bool check, char* currentBoard, int* halfMoves, int* stallingMoves, char captured[2][15]) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
 
@@ -235,6 +243,8 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
                         if (isEnPassant(lastMove, *startPos, selectedPiece, game)) {
                             game[lastMove[1].row][lastMove[1].col] = ' ';
                             updateBoard(renderer, game, *startPos, lastMove[1]);    // micanje figure odnesene el passant potezom
+                            updateCapturedPieces(lastMovePiece, *turn, captured);
+                            showCapturedPiecesAndResetButton(renderer, captured);
                         }
 
 
@@ -265,6 +275,18 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
 
                         updateBoard(renderer, game, *startPos, clickedPos); // Poziv updateBoard funkcije
                         updateAttackedFields(game, attackedFields, *turn * -1, hasKingMoved, hasRookMoved, lastMove);  // Updating currently attacked fields
+                        
+                        if (targetPiece != ' ') {
+                            updateCapturedPieces(targetPiece, *turn * -1, captured);
+                            showCapturedPiecesAndResetButton(renderer, captured);
+                        }
+
+                        for (int i = 0; i < 2; i++) {
+                            for (int j = 0; j < 15; j++) {
+                                printf("%c-", captured[i][j]);
+                            }
+                            printf("\n");
+                        }
                     }
                     else {
                         // Ako potez nije valjan, resetiraj status pomicanja
@@ -489,4 +511,98 @@ void showGameOptions(SDL_Renderer* renderer, char game[8][8], char* currentBoard
 }
 
 
+void updateCapturedPieces(char piece, int turn, char captured[2][15]) {
+    int color;
+
+    if (turn == 1) {    // white made the capture
+        color = 0;
+    }
+    else {  // black made the capture
+        color = 1;
+    }
+    
+    for (int i = 0; i < 15; i++) {
+        if (captured[color][i] == ' ') {
+            captured[color][i] = piece;
+            break;
+        }
+    }
+}
+
+
+void showCapturedPiecesAndResetButton(SDL_Renderer* renderer, char captured[2][15]) {
+    // Sivi prostor
+    SDL_Rect greyRect = { SCREEN_WIDTH, 0, 130, SCREEN_HEIGHT };
+    SDL_SetRenderDrawColor(renderer, 192, 192, 192, 255); // RGB za sivu
+    SDL_RenderFillRect(renderer, &greyRect);
+
+    // Iscrtavanje bijelih figura
+    int offsetTop = 5;
+    int offsetLeft = 5;
+    for (int i = 0; i < 15; i++) {
+        if (captured[1][i] == ' ')
+            break;
+
+        char color[6];
+        strcpy(color, islower(captured[1][i]) ? "black" : "white");
+        char pieceName[7];
+        sprintf(pieceName, "%s", (char* []) { "rook", "knight", "bishop", "queen", "king", "pawn" }[strchr("rnbqkp", tolower(captured[1][i])) - "rnbqkp"]);
+        char path[50];
+        sprintf(path, "img/%s_%s.png", pieceName, color);
+        SDL_Surface* surface = IMG_Load(path);
+        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_FreeSurface(surface);
+        SDL_Rect destRect = { SCREEN_WIDTH + offsetLeft, offsetTop, 20, 30 };
+        SDL_RenderCopy(renderer, texture, NULL, &destRect);
+        SDL_DestroyTexture(texture);
+
+        offsetLeft += 25;  // Dodajte horizontalni pomak za sljedeću figuru
+        if (i % 5 == 4) {
+            offsetTop += 40;  // Dodajte vertikalni pomak za sljedeći red
+            offsetLeft = 5;  // Resetirajte horizontalni pomak
+        }
+    }
+
+    // Iscrtavanje crnih figura
+    offsetTop = SCREEN_HEIGHT - 5 - 120;
+    offsetLeft = 5;
+    for (int i = 0; i < 15; i++) {
+        if (captured[0][i] == ' ')
+            break;
+
+        char color[6];
+        strcpy(color, islower(captured[0][i]) ? "black" : "white");
+        char pieceName[7];
+        sprintf(pieceName, "%s", (char* []) { "rook", "knight", "bishop", "queen", "king", "pawn" }[strchr("rnbqkp", tolower(captured[0][i])) - "rnbqkp"]);
+        char path[50];
+        sprintf(path, "img/%s_%s.png", pieceName, color);
+        SDL_Surface* surface = IMG_Load(path);
+        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_FreeSurface(surface);
+        SDL_Rect destRect = { SCREEN_WIDTH + offsetLeft, offsetTop, 20, 30 };
+        SDL_RenderCopy(renderer, texture, NULL, &destRect);
+        SDL_DestroyTexture(texture);
+        offsetLeft += 25;  // Dodajte horizontalni pomak za sljedeću figuru
+        if (i % 5 == 4) {
+            offsetTop += 40;  // Dodajte vertikalni pomak za sljedeći red
+            offsetLeft = 5;  // Resetirajte horizontalni pomak
+        }
+    }
+
+    // Reset game gumb
+    SDL_Rect buttonRect = { SCREEN_WIDTH + 25, (SCREEN_HEIGHT - 80) / 2, 80, 80 };
+
+    SDL_SetRenderDrawColor(renderer, 105, 105, 105, 255); // Crna boja
+    SDL_RenderFillRect(renderer, &buttonRect);
+
+    // Učitaj i postavi sliku za gumb
+    SDL_Surface* circleSurface = IMG_Load("img/circle_small.png");
+    SDL_Texture* circleTexture = SDL_CreateTextureFromSurface(renderer, circleSurface);
+    SDL_FreeSurface(circleSurface);
+
+    SDL_RenderCopy(renderer, circleTexture, NULL, &buttonRect);
+    SDL_DestroyTexture(circleTexture);
+
+    SDL_RenderPresent(renderer);
+}
 
