@@ -194,8 +194,8 @@ void endGame(SDL_Renderer* renderer) {
 }
 
 void drawGame(SDL_Renderer* renderer) {
-    int startX = (BOARD_WIDTH - TEXT_WIDHT) / 2 - 20;
-    int startY = (BOARD_HEIGHT - TEXT_HEIGHT) / 2 - 10;
+    int startX = (SCREEN_WIDTH - TEXT_WIDHT) / 2 - 20;
+    int startY = (SCREEN_HEIGHT - TEXT_HEIGHT) / 2 - 10;
 
     SDL_Rect borderRect = { startX - 10, startY - 10, TEXT_WIDHT + 40 + 20, TEXT_HEIGHT + 20 + 20 };
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Black border

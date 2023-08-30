@@ -6,6 +6,8 @@
 #include "SDL.h"
 #include "SDL_image.h"
 
+#define SCREEN_WIDTH 680
+#define SCREEN_HEIGHT 680
 #define BOARD_WIDTH 640
 #define BOARD_HEIGHT 640
 #define TEXT_WIDHT 240

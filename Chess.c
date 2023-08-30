@@ -425,8 +425,8 @@ void showGameOptions(SDL_Renderer* renderer, char game[8][8], char* currentBoard
     SDL_RenderFillRect(renderer, &mainBackground);
 
     char buttonImages[2][30];
-    sprintf(buttonImages[0], "img/%s.png", "number_1");
-    sprintf(buttonImages[1], "img/%s.png", "letter_g");
+    sprintf(buttonImages[0], "img/%s.png", "circle_large");
+    sprintf(buttonImages[1], "img/%s.png", "circle_small");
 
     SDL_Rect buttons[2];
     SDL_Rect buttonBorders[2]; // Dodali smo ovo za crne okvire

@@ -180,16 +180,29 @@ void showPossibleMoves(SDL_Renderer* renderer, char game[8][8], Position possibl
         int row = possibleMoves[i].row;
         int col = possibleMoves[i].col;
 
+        // Obojaj polje u originalnoj boji
+        SDL_SetRenderDrawColor(renderer, (row + col) % 2 == 0 ? 139 : 233, (row + col) % 2 == 0 ? 69 : 194, (row + col) % 2 == 0 ? 19 : 166, 255);
         SDL_Rect rect = { col * 80 + offset, row * 80 + offset, 80, 80 };
-        SDL_SetRenderDrawColor(renderer, 204, 102, 102, 255); // Crvenkasta boja za moguæe poteze
         SDL_RenderFillRect(renderer, &rect);
 
-        // Iscrtaj figuricu ponovo ako postoji na tom polju
+        // Uèitaj odgovarajuæu sliku kruga
+        char circlePath[30];
         char piece = game[row][col];
+        sprintf(circlePath, "img/%s.png", piece != ' ' ? "circle_large" : "circle_small");
+
+        SDL_Surface* circleSurface = IMG_Load(circlePath);
+        SDL_Texture* circleTexture = SDL_CreateTextureFromSurface(renderer, circleSurface);
+        SDL_FreeSurface(circleSurface);
+
+        SDL_RenderCopy(renderer, circleTexture, NULL, &rect);
+        SDL_DestroyTexture(circleTexture);
+
+        // Ako postoji figurica, iscrtaj je
         if (piece != ' ') {
             drawPiece(renderer, piece, row, col);
         }
     }
+
     SDL_RenderPresent(renderer);
 }
 
