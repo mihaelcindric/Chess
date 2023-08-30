@@ -36,19 +36,13 @@ char* storeCurrentBoardState(char game[8][8], int turn, char* castlingFEN, char*
 void showGameOptions(SDL_Renderer* renderer, char game[8][8], char* currentBoard, int* halfMoves, int* turn);
 void showCapturedPiecesAndResetButton(SDL_Renderer* renderer, char captured[2][15]);
 void updateCapturedPieces(char piece, int turn, char captured[2][15]);
+void initializeGame(char game[8][8]);
+
 
 int main(int argc, char* argv[])
 {
-    char game[8][8] = {
-    {'r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'},
-    {'p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'},
-    {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-    {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-    {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-    {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-    {'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'},
-    {'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'}
-    };
+    char game[8][8];
+    initializeGame(game);
 
     
     char currentBoard[90] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 0";
@@ -169,6 +163,35 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
             SDL_GetMouseState(&x, &y);
             Position clickedPos = { (y - 20) / 80, (x - 20) / 80 };
 
+            // resetiranje igre
+            if (x >= SCREEN_WIDTH + 25 && x <= SCREEN_WIDTH + 25 + 80 &&
+                y >= (SCREEN_HEIGHT - 80) / 2 && y <= (SCREEN_HEIGHT - 80) / 2 + 80) {
+                // Brišemo "data/game_history.txt" datoteku
+                remove("data/game_history.txt");
+
+                // Resetiranje igre na početne uvjete
+                initializeGame(game);
+                *turn = 1; // ili koja god je početna vrijednost
+                *isMoving = false;
+                *halfMoves = 0;
+                *stallingMoves = 0;
+                memset(hasKingMoved, 0, sizeof(bool) * 2);
+                memset(hasRookMoved, 0, sizeof(bool) * 4);
+                memset(attackedFields, 0, sizeof(int) * 8 * 8);
+                memset(lastMove, 0, sizeof(Position) * 2);
+                memset(captured, ' ', sizeof(char) * 2 * 15);
+                strcpy(currentBoard, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 0"); // ili postavljanje na početno FEN stanje
+
+                // Osvježavanje ploče i drugih elemenata sučelja
+                drawBoard(renderer, game);
+                showCapturedPiecesAndResetButton(renderer, captured);
+
+                // Stvaranje nove datoteke
+                storeCurrentBoardState(game, turn, "-", "-", halfMoves);
+
+                continue;  // preskočite ostatak iteracije petlje
+            }
+
             if (!(*isMoving)) {
                 if (*turn == 1 && isupper(game[clickedPos.row][clickedPos.col]) || *turn == -1 && islower(game[clickedPos.row][clickedPos.col])) { // Ako je na polju figura
                     *isMoving = true;
@@ -279,13 +302,6 @@ int handlePieceMovement(SDL_Renderer* renderer, char game[8][8], int* turn, bool
                         if (targetPiece != ' ') {
                             updateCapturedPieces(targetPiece, *turn * -1, captured);
                             showCapturedPiecesAndResetButton(renderer, captured);
-                        }
-
-                        for (int i = 0; i < 2; i++) {
-                            for (int j = 0; j < 15; j++) {
-                                printf("%c-", captured[i][j]);
-                            }
-                            printf("\n");
                         }
                     }
                     else {
@@ -431,7 +447,7 @@ void showGameOptions(SDL_Renderer* renderer, char game[8][8], char* currentBoard
     }
     fclose(file);
 
-    int buttonWidth = 150;
+    int buttonWidth = 80;
     int buttonHeight = 80;
     int gap = 30; // Dodali smo varijablu za razmak između gumba
     int totalWidth = (buttonWidth * 2) + gap;
@@ -606,3 +622,22 @@ void showCapturedPiecesAndResetButton(SDL_Renderer* renderer, char captured[2][1
     SDL_RenderPresent(renderer);
 }
 
+
+void initializeGame(char game[8][8]) {
+    char initial[8][8] = {
+        {'r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'},
+        {'p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'},
+        {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+        {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+        {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+        {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+        {'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'},
+        {'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'}
+    };
+
+    for (int i = 0; i < 8; ++i) {
+        for (int j = 0; j < 8; ++j) {
+            game[i][j] = initial[i][j];
+        }
+    }
+}
